@@ -9,20 +9,21 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    # --- POCZĄTEK ZMIANY ---
-    # Dodaj tę sekcję, aby nadać akcji uprawnienia do zapisu
+    # Nadaj akcji uprawnienia do zapisu w repozytorium
     permissions:
       contents: write
-    # --- KONIEC ZMIANY ---
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      # --- POCZĄTEK POPRAWIONEJ SEKCJI ---
       - name: Install opkg-utils
         run: |
+          sudo add-apt-repository universe
           sudo apt-get update
           sudo apt-get install -y opkg-utils
+      # --- KONIEC POPRAWIONEJ SEKCJI ---
 
       - name: Generate OPKG Indexes
         run: |
@@ -42,10 +43,8 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add .
-          # Sprawdź, czy są zmiany
           if ! git diff-index --quiet HEAD; then
             git commit -m "Automatyczna aktualizacja indeksów OPKG [ci skip]"
-            # Użyj GITHUB_TOKEN do autoryzacji pusha
             git push "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" HEAD:main
           else
             echo "Brak zmian w indeksach. Nic do wysłania."
