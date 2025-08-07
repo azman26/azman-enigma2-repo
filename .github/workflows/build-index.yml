@@ -1,0 +1,54 @@
+name: Build OPKG Index
+
+# Uruchamiaj tę akcję przy każdym pushu do gałęzi 'main'
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest # Użyj najnowszej maszyny wirtualnej z Ubuntu
+
+    steps:
+      # Krok 1: Pobierz kod z repozytorium do maszyny wirtualnej
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Krok 2: Zainstaluj opkg-utils w środowisku maszyny wirtualnej
+      - name: Install opkg-utils
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y opkg-utils
+
+      # Krok 3: Wygeneruj indeksy dla wszystkich architektur
+      - name: Generate OPKG Indexes
+        run: |
+          # Pętla po wszystkich katalogach (z wyjątkiem .github)
+          for arch in */; do
+            if [ -d "$arch" ] && [ "$arch" != ".github/" ]; then
+              echo "-> Processing architecture: ${arch%/}"
+              cd "$arch"
+              # Usuń stare indeksy, aby uniknąć problemów
+              rm -f Packages Packages.gz
+              # Wygeneruj nowe indeksy
+              opkg-build-index -o Packages -p Packages.gz .
+              cd ..
+            fi
+          done
+
+      # Krok 4: Skonfiguruj Gita i wyślij zmiany z powrotem do repozytorium
+      - name: Commit and push changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          # Dodaj wszystkie nowe i zmodyfikowane pliki (Packages.gz)
+          git add .
+          # Sprawdź, czy są jakieś zmiany do wysłania
+          if ! git diff-index --quiet HEAD; then
+            # Stwórz commit, dodając [ci skip] aby uniknąć pętli akcji
+            git commit -m "Automatyczna aktualizacja indeksów OPKG [ci skip]"
+            git push
+          else
+            echo "Brak zmian w indeksach. Nic do wysłania."
+          fi
