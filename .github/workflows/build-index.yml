@@ -9,7 +9,6 @@ jobs:
   build:
     runs-on: ubuntu-22.04
 
-    # Nadaj akcji uprawnienia do zapisu w repozytorium
     permissions:
       contents: write
 
@@ -17,17 +16,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # --- POCZĄTEK POPRAWIONEJ SEKCJI ---
       - name: Install opkg-utils
         run: |
+          sudo apt-get update
+          sudo apt-get install -y software-properties-common
           sudo add-apt-repository universe
           sudo apt-get update
           sudo apt-get install -y opkg-utils
-      # --- KONIEC POPRAWIONEJ SEKCJI ---
 
       - name: Generate OPKG Indexes
         run: |
-          # Pętla po wszystkich podkatalogach
           for arch in */; do
             if [ -d "$arch" ] && [ "$arch" != ".github/" ]; then
               echo "-> Processing architecture: ${arch%/}"
