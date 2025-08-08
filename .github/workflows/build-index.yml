@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest # Możemy wrócić do ubuntu-latest, bo host nie ma już znaczenia
 
     permissions:
       contents: write
@@ -16,22 +16,28 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Install opkg-utils
-        run: sudo apt-get update && sudo apt-get install -y opkg-utils
-
-      - name: Generate OPKG Indexes (native)
+      - name: Generate OPKG Indexes using Official OpenWrt Docker SDK
         run: |
-          for arch_dir in all armv7ahf-neon mips32el; do
-            if [ -d "$arch_dir" ]; then
-              echo "--> Processing directory: $arch_dir"
-              cd "$arch_dir"
-
-              opkg-make-index . > Packages
-              gzip -kf Packages
-
-              cd ..
-            fi
-          done
+          echo "Running opkg-build-index inside the OFFICIAL OpenWrt SDK Docker container..."
+          
+          # ZMIANA: Używamy oficjalnego, zweryfikowanego obrazu z GitHub Container Registry
+          docker run --rm --user $(id -u):$(id -g) -v "$(pwd):/work" ghcr.io/openwrt/sdk:x86_64-22.03.5 /bin/sh -c '
+            cd /work
+            for arch_dir in all armv7ahf-neon mips32el; do
+              if [ -d "$arch_dir" ]; then
+                echo "--> Processing directory: $arch_dir"
+                cd "$arch_dir"
+                
+                # Używamy bezpośrednio binarnego programu opkg-build-index, który jest w ścieżce
+                opkg-build-index -o Packages .
+                gzip -c Packages > Packages.gz
+                rm Packages
+                
+                cd ..
+              fi
+            done
+            echo "Index generation complete."
+          '
 
       - name: Commit and push changes
         run: |
@@ -43,3 +49,4 @@ jobs:
             git push "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" HEAD:main
           else
             echo "Brak zmian w indeksach. Nic do wysłania."
+          fi
