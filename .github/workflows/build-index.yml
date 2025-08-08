@@ -16,13 +16,21 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Install opkg-utils
+      - name: Fix apt sources and install opkg-utils
         run: |
-          echo "--- Modifying sources.list to add 'universe' repository ---"
-          sudo sed -i 's/ main/ main universe/g' /etc/apt/sources.list
-          echo "--- Verifying modification ---"
+          # The 'Nuke and Pave' approach. This is the definitive fix.
+          # We overwrite the problematic cloud-init sources.list with the official, canonical one.
+          echo "--- Overwriting /etc/apt/sources.list with canonical Ubuntu sources ---"
+          sudo tee /etc/apt/sources.list >/dev/null <<'EOF'
+          deb http://archive.ubuntu.com/ubuntu/ jammy main restricted universe multiverse
+          deb http://archive.ubuntu.com/ubuntu/ jammy-updates main restricted universe multiverse
+          deb http://archive.ubuntu.com/ubuntu/ jammy-security main restricted universe multiverse
+          EOF
+
+          echo "--- Verifying new sources.list content ---"
           cat /etc/apt/sources.list
-          
+
+          # Now, with a clean and standard source list, update and install.
           echo "--- Updating package list and installing ---"
           sudo apt-get update
           sudo apt-get install -y opkg-utils
