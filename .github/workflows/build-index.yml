@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest # Możemy wrócić do ubuntu-latest, bo host nie ma już znaczenia
 
     permissions:
       contents: write
@@ -16,19 +16,23 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Generate OPKG Indexes using Docker
+      - name: Generate OPKG Indexes using Official OpenWrt Docker SDK
         run: |
-          echo "Running opkg-build-index inside an OpenWrt SDK Docker container..."
-          docker run --rm -v "$(pwd):/work" openwrtorg/sdk:x86-64-21.02.3 /bin/sh -c '
+          echo "Running opkg-build-index inside the OFFICIAL OpenWrt SDK Docker container..."
+          
+          # ZMIANA: Używamy oficjalnego, zweryfikowanego obrazu z GitHub Container Registry
+          docker run --rm --user $(id -u):$(id -g) -v "$(pwd):/work" ghcr.io/openwrt/sdk:x86_64-22.03.5 /bin/sh -c '
             cd /work
             for arch_dir in all armv7ahf-neon mips32el; do
               if [ -d "$arch_dir" ]; then
                 echo "--> Processing directory: $arch_dir"
                 cd "$arch_dir"
-                # The SDK contains the indexer script. We redirect its output to create the Packages file.
-                /work/scripts/ipkg-build-index.sh . > Packages
+                
+                # Używamy bezpośrednio binarnego programu opkg-build-index, który jest w ścieżce
+                opkg-build-index -o Packages .
                 gzip -c Packages > Packages.gz
                 rm Packages
+                
                 cd ..
               fi
             done
