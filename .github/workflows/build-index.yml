@@ -1,19 +1,48 @@
-- name: Generate OPKG Indexes using Official OpenWrt Docker SDK
-  run: |
-    echo "Running opkg-make-index inside the OFFICIAL OpenWrt SDK Docker container..."
+name: Build OPKG Index
 
-    docker run --rm --user $(id -u):$(id -g) -v "$(pwd):/work" ghcr.io/openwrt/sdk:x86_64-22.03.5 /bin/sh -c '
-      cd /work
-      for arch_dir in all armv7ahf-neon mips32el; do
-        if [ -d "$arch_dir" ]; then
-          echo "--> Processing directory: $arch_dir"
-          cd "$arch_dir"
+on:
+  push:
+    branches:
+      - main
 
-          opkg-make-index . > Packages
-          gzip -kf Packages
+jobs:
+  build:
+    runs-on: ubuntu-latest
 
-          cd ..
-        fi
-      done
-      echo "Index generation complete."
-    '
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Generate OPKG Indexes using Official OpenWrt Docker SDK
+        run: |
+          echo "Running opkg-make-index inside the OFFICIAL OpenWrt SDK Docker container..."
+          
+          docker run --rm --user $(id -u):$(id -g) -v "$(pwd):/work" ghcr.io/openwrt/sdk:x86_64-22.03.5 /bin/sh -c '
+            cd /work
+            for arch_dir in all armv7ahf-neon mips32el; do
+              if [ -d "$arch_dir" ]; then
+                echo "--> Processing directory: $arch_dir"
+                cd "$arch_dir"
+                
+                opkg-make-index . > Packages
+                gzip -kf Packages
+                
+                cd ..
+              fi
+            done
+            echo "Index generation complete."
+          '
+
+      - name: Commit and push changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add .
+          if ! git diff-index --quiet HEAD; then
+            git commit -m "Automatyczna aktualizacja indeksów OPKG [ci skip]"
+            git push "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" HEAD:main
+          else
+            echo "Brak zmian w indeksach. Nic do wysłania."
