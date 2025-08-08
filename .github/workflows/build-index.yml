@@ -16,25 +16,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Generate OPKG Indexes using Official OpenWrt Docker SDK
+      - name: Install opkg-utils
+        run: sudo apt-get update && sudo apt-get install -y opkg-utils
+
+      - name: Generate OPKG Indexes (native)
         run: |
-          echo "Running opkg-make-index inside the OFFICIAL OpenWrt SDK Docker container..."
-          
-          docker run --rm --user $(id -u):$(id -g) -v "$(pwd):/work" ghcr.io/openwrt/sdk:x86_64-22.03.5 /bin/sh -c '
-            cd /work
-            for arch_dir in all armv7ahf-neon mips32el; do
-              if [ -d "$arch_dir" ]; then
-                echo "--> Processing directory: $arch_dir"
-                cd "$arch_dir"
-                
-                opkg-make-index . > Packages
-                gzip -kf Packages
-                
-                cd ..
-              fi
-            done
-            echo "Index generation complete."
-          '
+          for arch_dir in all armv7ahf-neon mips32el; do
+            if [ -d "$arch_dir" ]; then
+              echo "--> Processing directory: $arch_dir"
+              cd "$arch_dir"
+
+              opkg-make-index . > Packages
+              gzip -kf Packages
+
+              cd ..
+            fi
+          done
 
       - name: Commit and push changes
         run: |
