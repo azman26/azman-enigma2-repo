@@ -18,9 +18,12 @@ jobs:
 
       - name: Install opkg-utils
         run: |
-          sudo apt-get update
-          sudo apt-get install -y software-properties-common
-          sudo add-apt-repository universe
+          echo "--- Modifying sources.list to add 'universe' repository ---"
+          sudo sed -i 's/ main/ main universe/g' /etc/apt/sources.list
+          echo "--- Verifying modification ---"
+          cat /etc/apt/sources.list
+          
+          echo "--- Updating package list and installing ---"
           sudo apt-get update
           sudo apt-get install -y opkg-utils
 
