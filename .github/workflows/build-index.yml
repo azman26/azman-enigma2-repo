@@ -24,7 +24,7 @@ jobs:
               if [ -d "$arch_dir" ]; then
                 echo "--> Processing directory: $arch_dir"
                 cd "$arch_dir"
-                opkg-build-index -o Packages .
+                opkg-make-index -r . > Packages .
                 gzip -c Packages > Packages.gz
                 rm Packages
                 cd ..
