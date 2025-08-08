@@ -1,52 +1,62 @@
-name: Build OPKG Index
+name: Build OPKG Index and Deploy to GitHub Pages
 
 on:
   push:
     branches:
       - main
 
+# Ustaw uprawnienia dla GITHUB_TOKEN, aby akcja mogła wdrożyć stronę
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Pozwól na tylko jedno współbieżne wdrożenie, anuluj poprzednie
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
 jobs:
-  build:
-    runs-on: ubuntu-latest # Możemy wrócić do ubuntu-latest, bo host nie ma już znaczenia
-
-    permissions:
-      contents: write
-
+  # Zadanie 1: Zbuduj indeksy OPKG
+  build_index:
+    runs-on: ubuntu-latest
+    
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Generate OPKG Indexes using Official OpenWrt Docker SDK
         run: |
           echo "Running opkg-build-index inside the OFFICIAL OpenWrt SDK Docker container..."
-          
-          # ZMIANA: Używamy oficjalnego, zweryfikowanego obrazu z GitHub Container Registry
           docker run --rm --user $(id -u):$(id -g) -v "$(pwd):/work" ghcr.io/openwrt/sdk:x86_64-22.03.5 /bin/sh -c '
             cd /work
             for arch_dir in all armv7ahf-neon mips32el; do
               if [ -d "$arch_dir" ]; then
                 echo "--> Processing directory: $arch_dir"
                 cd "$arch_dir"
-                
-                # Używamy bezpośrednio binarnego programu opkg-build-index, który jest w ścieżce
                 opkg-build-index -o Packages .
                 gzip -c Packages > Packages.gz
                 rm Packages
-                
                 cd ..
               fi
             done
             echo "Index generation complete."
           '
+          
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
 
-      - name: Commit and push changes
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add .
-          if ! git diff-index --quiet HEAD; then
-            git commit -m "Automatyczna aktualizacja indeksów OPKG [ci skip]"
-            git push "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" HEAD:main
-          else
-            echo "Brak zmian w indeksach. Nic do wysłania."
-          fi
+  # Zadanie 2: Wdróż stronę na GitHub Pages
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build_index  # To zadanie uruchomi się dopiero po sukcesie 'build_index'
+    
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
