@@ -16,36 +16,24 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Fix apt sources and install opkg-utils
+      - name: Generate OPKG Indexes using Docker
         run: |
-          # The 'Nuke and Pave' approach. This is the definitive fix.
-          # We overwrite the problematic cloud-init sources.list with the official, canonical one.
-          echo "--- Overwriting /etc/apt/sources.list with canonical Ubuntu sources ---"
-          sudo tee /etc/apt/sources.list >/dev/null <<'EOF'
-          deb http://archive.ubuntu.com/ubuntu/ jammy main restricted universe multiverse
-          deb http://archive.ubuntu.com/ubuntu/ jammy-updates main restricted universe multiverse
-          deb http://archive.ubuntu.com/ubuntu/ jammy-security main restricted universe multiverse
-          EOF
-
-          echo "--- Verifying new sources.list content ---"
-          cat /etc/apt/sources.list
-
-          # Now, with a clean and standard source list, update and install.
-          echo "--- Updating package list and installing ---"
-          sudo apt-get update
-          sudo apt-get install -y opkg-utils
-
-      - name: Generate OPKG Indexes
-        run: |
-          for arch in */; do
-            if [ -d "$arch" ] && [ "$arch" != ".github/" ]; then
-              echo "-> Processing architecture: ${arch%/}"
-              cd "$arch"
-              rm -f Packages Packages.gz
-              opkg-build-index -o Packages -p Packages.gz .
-              cd ..
-            fi
-          done
+          echo "Running opkg-build-index inside an OpenWrt SDK Docker container..."
+          docker run --rm -v "$(pwd):/work" openwrtorg/sdk:x86-64-21.02.3 /bin/sh -c '
+            cd /work
+            for arch_dir in all armv7ahf-neon mips32el; do
+              if [ -d "$arch_dir" ]; then
+                echo "--> Processing directory: $arch_dir"
+                cd "$arch_dir"
+                # The SDK contains the indexer script. We redirect its output to create the Packages file.
+                /work/scripts/ipkg-build-index.sh . > Packages
+                gzip -c Packages > Packages.gz
+                rm Packages
+                cd ..
+              fi
+            done
+            echo "Index generation complete."
+          '
 
       - name: Commit and push changes
         run: |
