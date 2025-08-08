@@ -8,8 +8,6 @@ on:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    
-    # Nadajemy uprawnienia tylko do odczytu i zapisu zawartości
     permissions:
       contents: write
       
@@ -35,10 +33,27 @@ jobs:
             echo "Index generation complete."
           '
           
+      # --- NOWY KROK ---
+      - name: Generate HTML index files
+        run: |
+          echo "Generating HTML index files for browsing..."
+          for dir in . all armv7ahf-neon mips32el; do
+            if [ -d "$dir" ]; then
+              echo "<html><head><title>Index of /$dir</title></head><body><h1>Index of /$dir</h1><hr><pre>" > "$dir/index.html"
+              for item in "$dir"/*; do
+                # Pomiń sam plik index.html
+                if [[ "$(basename "$item")" != "index.html" ]]; then
+                  echo "<a href=\"$(basename "$item")\">$(basename "$item")</a>" >> "$dir/index.html"
+                fi
+              done
+              echo "</pre><hr></body></html>" >> "$dir/index.html"
+            fi
+          done
+      # --- KONIEC NOWEGO KROKU ---
+
       - name: Deploy to gh-pages branch
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: .
-          # Opcjonalnie: czyści historię gałęzi gh-pages przy każdym wdrożeniu
-          force_orphan: true 
+          force_orphan: true
