@@ -15,18 +15,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Show current directory and list root contents
-        run: |
-          pwd
-          ls -l
+      - name: Show current directory
+        run: pwd
+
+      - name: List root directory contents
+        run: ls -l
 
       - name: Show opkg-utils directory contents
         run: ls -l opkg-utils
-
-      - name: Prepare output directory
-        run: |
-          rm -rf output
-          mkdir -p output
 
       - name: Generate OPKG Indexes using Python script
         run: |
@@ -34,14 +30,10 @@ jobs:
             if [ -d "$arch_dir" ]; then
               echo "Processing $arch_dir"
               rm -f "$arch_dir/Packages" "$arch_dir/Packages.gz"
-              python3 ./opkg-utils/opkg-make-index -r "$arch_dir" > "$arch_dir/Packages"
+              python3 ./opkg-utils/opkg-make-index "$arch_dir" > "$arch_dir/Packages"
               gzip -c "$arch_dir/Packages" > "$arch_dir/Packages.gz"
               echo "First 20 lines of $arch_dir/Packages:"
               head -20 "$arch_dir/Packages"
-              # Kopiuj wygenerowane pliki do output
-              mkdir -p output/$arch_dir
-              cp "$arch_dir/Packages.gz" output/$arch_dir/
-              cp "$arch_dir/Packages" output/$arch_dir/
             else
               echo "Directory $arch_dir does not exist, skipping."
             fi
@@ -50,7 +42,8 @@ jobs:
 
       - name: Generate HTML index files for browsing
         run: |
-          for dir in output output/all output/armv7ahf-neon output/mips32el; do
+          echo "Generating HTML index files..."
+          for dir in . all armv7ahf-neon mips32el; do
             if [ -d "$dir" ]; then
               echo "<html><head><title>Index of /$dir</title></head><body><h1>Index of /$dir</h1><hr><pre>" > "$dir/index.html"
               for item in "$dir"/*; do
@@ -67,5 +60,5 @@ jobs:
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./output
+          publish_dir: .
           force_orphan: true
