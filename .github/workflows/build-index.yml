@@ -29,7 +29,7 @@ jobs:
           for arch_dir in all armv7ahf-neon mips32el; do
             if [ -d "$arch_dir" ]; then
               echo "Processing $arch_dir"
-              python3 ./opkg-utils/opkg-make-index -r "$arch_dir" > "$arch_dir/Packages"
+              python3 ./opkg-utils/opkg-make-index "$arch_dir" > "$arch_dir/Packages"
               gzip -c "$arch_dir/Packages" > "$arch_dir/Packages.gz"
               rm "$arch_dir/Packages"
             fi
