@@ -1,19 +1,19 @@
-# Ignoruj pliki tymczasowe systemowe i edytorów
+# Ignoruj pliki tymczasowe i edytorów
 *.swp
 *.bak
 *.tmp
-*.DS_Store
-Thumbs.db
-
-# Ignoruj logi
-*.log
 
 # Ignoruj pliki systemowe Windows i Mac
+.DS_Store
+Thumbs.db
 ehthumbs.db
 desktop.ini
 ._*
 
-# Nie ignoruj pakietów .ipk, Packages, Packages.gz!
+# Ignoruj logi
+*.log
+
+# Nie ignoruj plików pakietów i indeksów
 !*.ipk
 !Packages
 !Packages.gz
