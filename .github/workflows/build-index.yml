@@ -10,38 +10,35 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Generate OPKG Indexes using Docker
+      - name: Set up Python 3
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Generate OPKG indexes
         run: |
-          echo "Running opkg-build-index inside the OFFICIAL OpenWrt SDK Docker container..."
-          docker run --rm --user $(id -u):$(id -g) -v "$(pwd):/work" ghcr.io/openwrt/sdk:x86_64-22.03.5 /bin/sh -c '
-            cd /work
-            for arch_dir in all armv7ahf-neon mips32el; do
-              if [ -d "$arch_dir" ]; then
-                echo "--> Processing directory: $arch_dir"
-                cd "$arch_dir"
-                opkg-make-index -r . > Packages .
-                gzip -c Packages > Packages.gz
-                rm Packages
-                cd ..
-              fi
-            done
-            echo "Index generation complete."
-          '
-          
-      # --- NOWY KROK ---
+          for arch_dir in all armv7ahf-neon mips32el; do
+            if [ -d "$arch_dir" ]; then
+              echo "Processing $arch_dir"
+              python3 opkg-utils/opkg-make-index -r "$arch_dir" > "$arch_dir/Packages"
+              gzip -c "$arch_dir/Packages" > "$arch_dir/Packages.gz"
+              rm "$arch_dir/Packages"
+            fi
+          done
+
       - name: Generate HTML index files
         run: |
-          echo "Generating HTML index files for browsing..."
           for dir in . all armv7ahf-neon mips32el; do
             if [ -d "$dir" ]; then
               echo "<html><head><title>Index of /$dir</title></head><body><h1>Index of /$dir</h1><hr><pre>" > "$dir/index.html"
               for item in "$dir"/*; do
-                # Pomiń sam plik index.html
                 if [[ "$(basename "$item")" != "index.html" ]]; then
                   echo "<a href=\"$(basename "$item")\">$(basename "$item")</a>" >> "$dir/index.html"
                 fi
@@ -49,11 +46,9 @@ jobs:
               echo "</pre><hr></body></html>" >> "$dir/index.html"
             fi
           done
-      # --- KONIEC NOWEGO KROKU ---
 
       - name: Deploy to gh-pages branch
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: .
-          force_orphan: true
+          publish_dir: ./all
