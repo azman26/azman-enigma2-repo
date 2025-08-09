@@ -15,12 +15,26 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Generate OPKG Indexes using Python script
+      - name: Show repo root contents
+        run: ls -l
+
+      - name: Show contents of arch dirs
+        run: |
+          for dir in all armv7ahf-neon mips32el; do
+            if [ -d "$dir" ]; then
+              echo "Contents of $dir:"
+              ls -l "$dir"
+            else
+              echo "$dir directory does not exist"
+            fi
+          done
+
+      - name: Generate OPKG Indexes using Python script (no -r)
         run: |
           for arch_dir in all armv7ahf-neon mips32el; do
             if [ -d "$arch_dir" ]; then
               echo "Processing $arch_dir"
-              python3 ./opkg-utils/opkg-make-index -r "$arch_dir" > "$arch_dir/Packages"
+              python3 ./opkg-utils/opkg-make-index "$arch_dir" > "$arch_dir/Packages"
               gzip -c "$arch_dir/Packages" > "$arch_dir/Packages.gz"
               rm "$arch_dir/Packages"
             fi
@@ -29,26 +43,32 @@ jobs:
 
       - name: Generate custom HTML index file
         run: |
-          echo '<!DOCTYPE html>' > index.html
-          echo '<html lang="pl">' >> index.html
-          echo '<head>' >> index.html
-          echo '  <meta charset="UTF-8">' >> index.html
-          echo '  <title>Repozytorium OPKG - Azman</title>' >> index.html
-          echo '</head>' >> index.html
-          echo '<body>' >> index.html
-          echo '  <h1>📦 Repozytorium OPKG dla Enigma2</h1>' >> index.html
-          echo '  <p>Dodaj poniższy feed do swojego tunera Enigma2:</p>' >> index.html
-          echo '  <pre><code>src/gz azman-all https://azman26.github.io/azman-enigma2-repo/all</code></pre>' >> index.html
-          echo '  <h2>Dostępne architektury</h2>' >> index.html
-          echo '  <ul>' >> index.html
-          echo '    <li><a href="all/">all/</a> – pakiety niezależne od architektury</li>' >> index.html
-          echo '  </ul>' >> index.html
-          echo '  <h2>Przykładowa instalacja</h2>' >> index.html
-          echo '  <pre><code>opkg update' >> index.html
-          echo 'opkg install plugin.nazwa</code></pre>' >> index.html
-          echo '  <p>Repozytorium przygotowane przez <strong>azman</strong>.</p>' >> index.html
-          echo '</body>' >> index.html
-          echo '</html>' >> index.html
+          cat > index.html <<EOF
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <title>Repozytorium OPKG - Azman</title>
+</head>
+<body>
+  <h1>📦 Repozytorium OPKG dla Enigma2</h1>
+  <p>Dodaj poniższy feed do swojego tunera Enigma2:</p>
+
+  <pre><code>src/gz azman-all https://azman26.github.io/azman-enigma2-repo/all</code></pre>
+
+  <h2>Dostępne architektury</h2>
+  <ul>
+    <li><a href="all/">all/</a> – pakiety niezależne od architektury</li>
+  </ul>
+
+  <h2>Przykładowa instalacja</h2>
+  <pre><code>opkg update
+opkg install plugin.nazwa</code></pre>
+
+  <p>Repozytorium przygotowane przez <strong>azman</strong>.</p>
+</body>
+</html>
+EOF
         shell: bash
 
       - name: Deploy to GitHub Pages
