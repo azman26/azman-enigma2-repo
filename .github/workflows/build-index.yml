@@ -14,27 +14,31 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - name: Set up Python 3
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.x'
+      - name: Show current directory
+        run: pwd
 
-      - name: Generate OPKG indexes
+      - name: List root directory contents
+        run: ls -l
+
+      - name: Show opkg-utils directory contents
+        run: ls -l opkg-utils
+
+      - name: Generate OPKG Indexes using Python script
         run: |
           for arch_dir in all armv7ahf-neon mips32el; do
             if [ -d "$arch_dir" ]; then
               echo "Processing $arch_dir"
-              python3 opkg-utils/opkg-make-index -r "$arch_dir" > "$arch_dir/Packages"
+              python3 ./opkg-utils/opkg-make-index -r "$arch_dir" > "$arch_dir/Packages"
               gzip -c "$arch_dir/Packages" > "$arch_dir/Packages.gz"
               rm "$arch_dir/Packages"
             fi
           done
+        shell: bash
 
       - name: Generate HTML index files
         run: |
+          echo "Generating HTML index files for browsing..."
           for dir in . all armv7ahf-neon mips32el; do
             if [ -d "$dir" ]; then
               echo "<html><head><title>Index of /$dir</title></head><body><h1>Index of /$dir</h1><hr><pre>" > "$dir/index.html"
@@ -46,10 +50,11 @@ jobs:
               echo "</pre><hr></body></html>" >> "$dir/index.html"
             fi
           done
+        shell: bash
 
       - name: Deploy to gh-pages branch
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./all
-          verbose: true
+          publish_dir: .
+          force_orphan: true
