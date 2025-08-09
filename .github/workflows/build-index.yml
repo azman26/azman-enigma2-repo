@@ -30,31 +30,31 @@ jobs:
       - name: Generate custom HTML index file
         run: |
           cat > index.html <<EOF
-          <!DOCTYPE html>
-          <html lang="pl">
-          <head>
-            <meta charset="UTF-8">
-            <title>Repozytorium OPKG - Azman</title>
-          </head>
-          <body>
-            <h1>📦 Repozytorium OPKG dla Enigma2</h1>
-            <p>Dodaj poniższy feed do swojego tunera Enigma2:</p>
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <title>Repozytorium OPKG - Azman</title>
+</head>
+<body>
+  <h1>📦 Repozytorium OPKG dla Enigma2</h1>
+  <p>Dodaj poniższy feed do swojego tunera Enigma2:</p>
 
-            <pre><code>src/gz azman_opkg https://azman26.github.io/azman-enigma2-repo/all</code></pre>
+  <pre><code>src/gz azman-all https://azman26.github.io/azman-enigma2-repo/all</code></pre>
 
-            <h2>Dostępne architektury</h2>
-            <ul>
-              <li><a href="all/">all/</a> – pakiety niezależne od architektury</li>
-            </ul>
+  <h2>Dostępne architektury</h2>
+  <ul>
+    <li><a href="all/">all/</a> – pakiety niezależne od architektury</li>
+  </ul>
 
-            <h2>Przykładowa instalacja</h2>
-            <pre><code>opkg update
+  <h2>Przykładowa instalacja</h2>
+  <pre><code>opkg update
 opkg install plugin.nazwa</code></pre>
 
-            <p>Repozytorium przygotowane przez <strong>azman</strong>.</p>
-          </body>
-          </html>
-          EOF
+  <p>Repozytorium przygotowane przez <strong>azman</strong>.</p>
+</body>
+</html>
+EOF
         shell: bash
 
       - name: Deploy to GitHub Pages
