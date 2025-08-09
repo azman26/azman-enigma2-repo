@@ -15,48 +15,49 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Show current directory
-        run: pwd
-
-      - name: List root directory contents
-        run: ls -l
-
-      - name: Show opkg-utils directory contents
-        run: ls -l opkg-utils
-
       - name: Generate OPKG Indexes using Python script
         run: |
           for arch_dir in all armv7ahf-neon mips32el; do
             if [ -d "$arch_dir" ]; then
               echo "Processing $arch_dir"
-              rm -f "$arch_dir/Packages" "$arch_dir/Packages.gz"
-              python3 ./opkg-utils/opkg-make-index "$arch_dir" > "$arch_dir/Packages"
+              python3 ./opkg-utils/opkg-make-index -r "$arch_dir" > "$arch_dir/Packages"
               gzip -c "$arch_dir/Packages" > "$arch_dir/Packages.gz"
-              echo "First 20 lines of $arch_dir/Packages:"
-              head -20 "$arch_dir/Packages"
-            else
-              echo "Directory $arch_dir does not exist, skipping."
+              rm "$arch_dir/Packages"
             fi
           done
         shell: bash
 
-      - name: Generate HTML index files for browsing
+      - name: Generate custom HTML index file
         run: |
-          echo "Generating HTML index files..."
-          for dir in . all armv7ahf-neon mips32el; do
-            if [ -d "$dir" ]; then
-              echo "<html><head><title>Index of /$dir</title></head><body><h1>Index of /$dir</h1><hr><pre>" > "$dir/index.html"
-              for item in "$dir"/*; do
-                if [[ "$(basename "$item")" != "index.html" ]]; then
-                  echo "<a href=\"$(basename "$item")\">$(basename "$item")</a>" >> "$dir/index.html"
-                fi
-              done
-              echo "</pre><hr></body></html>" >> "$dir/index.html"
-            fi
-          done
+          cat > index.html <<EOF
+          <!DOCTYPE html>
+          <html lang="pl">
+          <head>
+            <meta charset="UTF-8">
+            <title>Repozytorium OPKG - Azman</title>
+          </head>
+          <body>
+            <h1>📦 Repozytorium OPKG dla Enigma2</h1>
+            <p>Dodaj poniższy feed do swojego tunera Enigma2:</p>
+
+            <pre><code>src/gz azman_opkg https://azman26.github.io/azman-enigma2-repo/all</code></pre>
+
+            <h2>Dostępne architektury</h2>
+            <ul>
+              <li><a href="all/">all/</a> – pakiety niezależne od architektury</li>
+            </ul>
+
+            <h2>Przykładowa instalacja</h2>
+            <pre><code>opkg update
+opkg install plugin.nazwa</code></pre>
+
+            <p>Repozytorium przygotowane przez <strong>azman</strong>.</p>
+          </body>
+          </html>
+          EOF
         shell: bash
 
-      - name: Deploy to gh-pages branch
+      - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
