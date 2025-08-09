@@ -1,6 +1,12 @@
-Version: none
-MD5Sum: a9a841b1f20a89251c254b5f9c09e3f3
-Size: 488968
-Filename: enigma2-skins-e2Kodi-MetrixHD-azman_0.2_all.ipk
+Filename: enigma2-e2Kodi-skins-MetrixHD-azman_0.2_all.ipk
+Size: 571330
+Date: Sat, 09 Aug 2025 08:16:59 GMT
+Architecture: all
+Version: 0.2
 
+Filename: enigma2-plugin-extensions-AzmanPanel_1.0.3_all.ipk
+Size: 57976
+Date: Sat, 09 Aug 2025 08:16:59 GMT
+Architecture: all
+Version: 1.0.3
 
