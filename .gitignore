@@ -1,19 +1,31 @@
-# Ignoruj pliki tymczasowe i edytorów
+# Pliki tymczasowe edytorów
 *.swp
 *.bak
 *.tmp
 
-# Ignoruj pliki systemowe Windows i Mac
+# Pliki systemowe Windows i Mac
 .DS_Store
 Thumbs.db
 ehthumbs.db
 desktop.ini
 ._*
 
-# Ignoruj logi
+# Logi
 *.log
 
-# Nie ignoruj plików pakietów i indeksów
+# Cache Pythona
+__pycache__/
+*.pyc
+*.pyo
+
+# Pliki tymczasowe opkg/build
+Packages.stamps
+
+# Nie ignoruj pakietów i indeksów
 !*.ipk
 !Packages
 !Packages.gz
+
+# Ignoruj skrypt update_repo.py
+update_repo.py
+
