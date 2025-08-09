@@ -18,14 +18,6 @@ __pycache__/
 *.pyc
 *.pyo
 
-# Pliki tymczasowe opkg/build
-Packages.stamps
-
 # Nie ignoruj pakietów i indeksów
 !*.ipk
-!Packages
-!Packages.gz
-
-# Ignoruj skrypt update_repo.py
-update_repo.py
 
