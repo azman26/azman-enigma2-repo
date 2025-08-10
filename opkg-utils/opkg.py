@@ -43,6 +43,7 @@ from stat import ST_SIZE
 import arfile
 import tarfile
 import textwrap
+import io  # <--- dodane import io
 
 class Version:
     """A class for holding parsed package version information."""
@@ -147,13 +148,17 @@ class Package:
                 control = tarf.extractfile("control")
             except KeyError:
                 control = tarf.extractfile("./control")
-            try:
-                self.read_control(control)
-            except TypeError as e:
-                sys.stderr.write("Cannot read control file '%s' - %s\n" % (fn, e))
-            control.close()
 
-            # don't forget to close tarfile
+            if control is not None:
+                control = io.TextIOWrapper(control, encoding='utf-8')  # <-- tutaj poprawka
+                try:
+                    self.read_control(control)
+                except TypeError as e:
+                    sys.stderr.write("Cannot read control file '%s' - %s\n" % (fn, e))
+                control.close()
+            else:
+                sys.stderr.write("Control file not found in %s\n" % fn)
+
             tarf.close()
             tarStream.close()
 
