@@ -1,0 +1,9 @@
+# Ustaw domyślne zachowanie, aby Git sam decydował
+* text=auto
+
+# Wymuś używanie końcówek linii LF (Linux) dla skryptów
+*.sh text eol=lf
+*.py text eol=lf
+
+# Jeśli skrypt `opkg-make-index` nie ma rozszerzenia, dodaj go jawnie
+opkg-utils/opkg-make-index text eol=lf
