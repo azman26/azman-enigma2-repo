@@ -1,0 +1,63 @@
+name: Build and Deploy OPKG Index
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:   # ręczne uruchomienie możliwe z UI
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Debug: show root and 'all' contents
+        run: |
+          echo "WORKDIR: $(pwd)"
+          ls -la
+          echo "contents of all/:"
+          ls -la all || true
+
+      - name: Install Python package opkg-utils
+        run: |
+          python -m pip install --upgrade pip
+          pip install opkg-utils
+
+      - name: Verify opkg-make-index is available
+        run: |
+          echo "Which opkg-make-index:"
+          which opkg-make-index || echo "opkg-make-index not on PATH"
+          opkg-make-index --help | head -n 20
+
+      - name: Generate Packages and Packages.gz
+        run: |
+          set -euo pipefail
+          if [ -d "./all" ]; then
+            echo "[INFO] Generating index for ./all"
+            opkg-make-index ./all > ./all/Packages
+            gzip -kf ./all/Packages
+            echo "[INFO] First 40 lines of ./all/Packages:"
+            head -n 40 ./all/Packages || true
+            echo "[INFO] Listing ./all:"
+            ls -la ./all
+          else
+            echo "[WARN] ./all directory not found - nothing to do"
+            exit 0
+          fi
+
+      - name: Deploy ./all to gh-pages (GitHub Pages)
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./all
+          publish_branch: gh-pages
+          force_orphan: true
+          keep_history: false
