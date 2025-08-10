@@ -15,10 +15,23 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # --- POPRAWKA ---
+      # Krok 1: Napraw końcówki linii w skrypcie (CRLF -> LF)
+      # Ten krok jest kluczowy do rozwiązania błędu '/usr/bin/env: ‘python\r’: No such file or directory'
+      - name: Fix script line endings
+        run: |
+          # Instalujemy dos2unix, jeśli nie ma, i konwertujemy plik.
+          # Używamy 'sudo' bo to maszyna GitHub Actions.
+          sudo apt-get update
+          sudo apt-get install -y dos2unix
+          dos2unix ./opkg-utils/opkg-make-index
+
+      # Krok 2: Nadaj uprawnienia do wykonania
       - name: Make opkg-make-index executable
         run: chmod +x ./opkg-utils/opkg-make-index
         shell: bash
 
+      # Krok 3: Generowanie indeksów OPKG - bez zmian
       - name: Generate OPKG Indexes using opkg-make-index script
         run: |
           for arch_dir in all armv7ahf-neon mips32el; do
@@ -33,6 +46,7 @@ jobs:
           done
         shell: bash
 
+      # Krok 4: Generowanie pliku HTML - bez zmian
       - name: Generate custom HTML index file
         run: |
           echo '<!DOCTYPE html>' > index.html
@@ -59,6 +73,7 @@ jobs:
           echo '</html>' >> index.html
         shell: bash
 
+      # Krok 5: Wdrożenie na GitHub Pages - bez zmian
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
