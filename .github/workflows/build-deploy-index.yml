@@ -15,58 +15,93 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - name: Fix script line endings
         run: |
           sudo apt-get update
           sudo apt-get install -y dos2unix
-
-      - name: Prepare opkg-make-index
-        run: |
           dos2unix ./opkg-utils/opkg-make-index
-          chmod +x ./opkg-utils/opkg-make-index
 
-      - name: Create build directory
+      - name: Make opkg-make-index executable
+        run: chmod +x ./opkg-utils/opkg-make-index
+        shell: bash
+
+      - name: Generate OPKG Indexes
         run: |
-          rm -rf build
           mkdir -p build
-
-      - name: Generate OPKG Indexes in build/
-        run: |
           for arch_dir in all armv7ahf-neon mips32el; do
             if [ -d "$arch_dir" ]; then
-              echo "✅ Found and processing: $arch_dir"
+              echo "✅ Found and processing directory: $arch_dir"
               mkdir -p "build/$arch_dir"
-              cp "$arch_dir"/* "build/$arch_dir"/
-              ./opkg-utils/opkg-make-index "build/$arch_dir" > "build/$arch_dir/Packages"
-              gzip -f "build/$arch_dir/Packages"
+              ./opkg-utils/opkg-make-index "$arch_dir" > "build/$arch_dir/Packages"
+              gzip -c "build/$arch_dir/Packages" > "build/$arch_dir/Packages.gz"
+              rm "build/$arch_dir/Packages"
+              cp -r "$arch_dir"/* "build/$arch_dir/" || true
             else
               echo "ℹ️ Directory $arch_dir does not exist, skipping."
             fi
           done
+        shell: bash
 
-      - name: Generate index.html in build/
+      - name: Validate OPKG Packages
         run: |
-          {
-            echo '<!DOCTYPE html>'
-            echo '<html lang="pl"><head><meta charset="UTF-8"><title>Repozytorium OPKG - Azman</title></head><body>'
-            echo '<h1>📦 Repozytorium OPKG dla Enigma2</h1>'
-            echo '<p>Aby dodać repozytorium, połącz się z tunerem przez SSH i wykonaj:</p>'
-            echo '<pre><code>echo "src/gz azman-opkg https://azman26.github.io/azman-enigma2-repo/all" > /etc/opkg/azman.conf</code></pre>'
-            echo '<h2>Dostępne architektury</h2><ul>'
-            [ -d "build/all" ] && echo '<li><a href="all/">all/</a> – niezależne od architektury</li>'
-            [ -d "build/armv7ahf-neon" ] && echo '<li><a href="armv7ahf-neon/">armv7ahf-neon/</a> – ARM</li>'
-            [ -d "build/mips32el" ] && echo '<li><a href="mips32el/">mips32el/</a> – MIPS</li>'
-            echo '</ul>'
-            echo '<h2>Instalacja pakietów</h2><pre><code>opkg update\opkg install enigma2-plugin-extensions-AzmanPanel</code></pre>'
-            echo '<p>Repozytorium przygotowane przez <strong>azman</strong>.</p>'
-            echo '</body></html>'
-          } > build/index.html
+          for arch_dir in all armv7ahf-neon mips32el; do
+            if [ -f "build/$arch_dir/Packages.gz" ]; then
+              echo "🔍 Checking build/$arch_dir/Packages.gz..."
+              if [ ! -s "build/$arch_dir/Packages.gz" ]; then
+                echo "❌ ERROR: build/$arch_dir/Packages.gz is empty!"
+                exit 1
+              fi
+              PKG_COUNT=$(gunzip -c "build/$arch_dir/Packages.gz" | grep -c "^Package:")
+              if [ "$PKG_COUNT" -eq 0 ]; then
+                echo "❌ ERROR: build/$arch_dir/Packages.gz does not contain any package entries!"
+                exit 1
+              fi
+              echo "✅ build/$arch_dir/Packages.gz is valid — found $PKG_COUNT packages."
+            fi
+          done
 
-      - name: Deploy to gh-pages
+      - name: Generate HTML index with package links
+        run: |
+          echo '<!DOCTYPE html>' > build/index.html
+          echo '<html lang="pl">' >> build/index.html
+          echo '<head>' >> build/index.html
+          echo '  <meta charset="UTF-8" />' >> build/index.html
+          echo '  <title>Repozytorium OPKG - Azman</title>' >> build/index.html
+          echo '  <style>body{font-family:Arial, sans-serif;margin:20px;} h1{color:#2a2a2a;} h2{margin-top:30px;} ul{list-style:disc;margin-left:20px;} pre{background:#f4f4f4;padding:10px;border-radius:6px;}</style>' >> build/index.html
+          echo '</head>' >> build/index.html
+          echo '<body>' >> build/index.html
+          echo '  <h1>📦 Repozytorium OPKG dla Enigma2</h1>' >> build/index.html
+          echo '  <p>Aby dodać repozytorium, połącz się z tunerem przez SSH i wykonaj komendę:</p>' >> build/index.html
+          echo '  <pre><code>echo "src/gz azman-repo-all https://azman26.github.io/azman-enigma2-repo/all" > /etc/opkg/azman.conf</code></pre>' >> build/index.html
+          echo '  <h2>Dostępne architektury i paczki</h2>' >> build/index.html
+
+          for arch_dir in all armv7ahf-neon mips32el; do
+            if [ -d "build/$arch_dir" ]; then
+              echo "  <h3>$arch_dir</h3>" >> build/index.html
+              echo "  <p>Lista paczek:</p>" >> build/index.html
+              echo "  <ul>" >> build/index.html
+              for pkg in $(ls build/$arch_dir/*.ipk 2>/dev/null | sort); do
+                pkg_file=$(basename "$pkg")
+                echo "    <li><a href=\"$arch_dir/$pkg_file\">$pkg_file</a></li>" >> build/index.html
+              done
+              echo "  </ul>" >> build/index.html
+            fi
+          done
+
+          echo '  <h2>Instalacja pakietów</h2>' >> build/index.html
+          echo '  <pre><code># Zaktualizuj listę pakietów' >> build/index.html
+          echo 'opkg update' >> build/index.html
+          echo '# Zainstaluj wybrany pakiet (np. e2iplayer)' >> build/index.html
+          echo 'opkg install enigma2-plugin-extensions-e2iplayer' >> build/index.html
+          echo '</code></pre>' >> build/index.html
+          echo '  <p>Repozytorium przygotowane przez <strong>azman</strong>.</p>' >> build/index.html
+          echo '</body>' >> build/index.html
+          echo '</html>' >> build/index.html
+        shell: bash
+
+      - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: build
-          publish_branch: gh-pages
-          keep_files: false
+          publish_dir: ./build
           force_orphan: true
