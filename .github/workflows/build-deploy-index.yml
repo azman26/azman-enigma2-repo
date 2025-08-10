@@ -89,6 +89,9 @@ jobs:
           echo '</html>' >> index.html
         shell: bash
 
+      - name: Add .nojekyll file to prevent GitHub Pages Jekyll processing
+        run: touch .nojekyll
+
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
