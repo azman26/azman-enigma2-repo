@@ -485,4 +485,3 @@ if __name__ == "__main__":
     package.set_depends("python >= 1.0")
     package.set_description("A long\nlonger\nreally longer description\n")
     print(package)
-``
