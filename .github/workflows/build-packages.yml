@@ -1,4 +1,4 @@
-name: Build OPKG Index
+name: Build and Deploy OPKG Index
 
 on:
   push:
@@ -23,10 +23,18 @@ jobs:
           opkg-utils/opkg-make-index all > all/Packages
           gzip -kf all/Packages
 
-      - name: Commit and push Packages
+      - name: Commit OPKG index
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add all/Packages all/Packages.gz
           git commit -m "Update OPKG index [skip ci]" || echo "No changes to commit"
           git push
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: .
+          publish_branch: gh-pages
+          force_orphan: true
