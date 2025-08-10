@@ -104,13 +104,13 @@ jobs:
             /^Version:/ { ver=$2; }
             /^$/ {
               if (pkg != "") {
-                printf "<li><b>%s</b> — wersja %s</li>\n", pkg, ver;
+                printf "<li><a href=\"all/%s.ipk\"><b>%s</b></a> — wersja %s</li>\n", pkg, pkg, ver;
               }
               pkg=""; ver="";
             }
             END {
               if (pkg != "") {
-                printf "<li><b>%s</b> — wersja %s</li>\n", pkg, ver;
+                printf "<li><a href=\"all/%s.ipk\"><b>%s</b></a> — wersja %s</li>\n", pkg, pkg, ver;
               }
             }
             ' all/Packages >> all/index.html
