@@ -15,58 +15,51 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Fix script line endings
+      - name: Install dos2unix
         run: |
           sudo apt-get update
           sudo apt-get install -y dos2unix
+
+      - name: Prepare opkg-make-index
+        run: |
           dos2unix ./opkg-utils/opkg-make-index
+          chmod +x ./opkg-utils/opkg-make-index
 
-      - name: Make opkg-make-index executable
-        run: chmod +x ./opkg-utils/opkg-make-index
-        shell: bash
-
-      - name: Generate OPKG Indexes using opkg-make-index script
+      - name: Generate OPKG Indexes
         run: |
           for arch_dir in all armv7ahf-neon mips32el; do
             if [ -d "$arch_dir" ]; then
-              echo "Processing $arch_dir"
-              # Poprawione wywołanie skryptu: przekazujemy katalog jako główny argument
+              echo "✅ Found and processing: $arch_dir"
               ./opkg-utils/opkg-make-index "$arch_dir" > "$arch_dir/Packages"
-              gzip -c "$arch_dir/Packages" > "$arch_dir/Packages.gz"
-              rm "$arch_dir/Packages"
+              gzip -f "$arch_dir/Packages"
             else
-              echo "Directory $arch_dir does not exist, skipping."
+              echo "ℹ️ Directory $arch_dir does not exist, skipping."
             fi
           done
-        shell: bash
 
-      - name: Generate custom HTML index file
+      - name: Generate index.html
         run: |
-          echo '<!DOCTYPE html>' > index.html
-          echo '<html lang="pl">' >> index.html
-          echo '<head>' >> index.html
-          echo '  <meta charset="UTF-8" />' >> index.html
-          echo '  <title>Repozytorium OPKG - Azman</title>' >> index.html
-          echo '</head>' >> index.html
-          echo '<body>' >> index.html
-          echo '  <h1>📦 Repozytorium OPKG dla Enigma2</h1>' >> index.html
-          echo '  <p>Dodaj poniższy feed do swojego tunera Enigma2:</p>' >> index.html
-          echo '  <pre><code>src/gz azman-opkg https://azman26.github.io/azman-enigma2-repo/all</code></pre>' >> index.html
-          echo '  <h2>Dostępne architektury</h2>' >> index.html
-          echo '  <ul>' >> index.html
-          echo '    <li><a href="all/">all/</a> – pakiety niezależne od architektury</li>' >> index.html
-          echo '  </ul>' >> index.html
-          echo '  <h2>Przykładowa instalacja</h2>' >> index.html
-          echo '  <pre><code>opkg update' >> index.html
-          echo 'opkg install plugin.nazwa</code></pre>' >> index.html
-          echo '  <p>Repozytorium przygotowane przez <strong>azman</strong>.</p>' >> index.html
-          echo '</body>' >> index.html
-          echo '</html>' >> index.html
-        shell: bash
+          {
+            echo '<!DOCTYPE html>'
+            echo '<html lang="pl"><head><meta charset="UTF-8"><title>Repozytorium OPKG - Azman</title></head><body>'
+            echo '<h1>📦 Repozytorium OPKG dla Enigma2</h1>'
+            echo '<p>Aby dodać repozytorium, połącz się z tunerem przez SSH i wykonaj:</p>'
+            echo '<pre><code>echo "src/gz azman-repo-all https://azman26.github.io/azman-enigma2-repo/all" > /etc/opkg/azman.conf</code></pre>'
+            echo '<h2>Dostępne architektury</h2><ul>'
+            [ -d "all" ] && echo '<li><a href="all/">all/</a> – niezależne od architektury</li>'
+            [ -d "armv7ahf-neon" ] && echo '<li><a href="armv7ahf-neon/">armv7ahf-neon/</a> – ARM</li>'
+            [ -d "mips32el" ] && echo '<li><a href="mips32el/">mips32el/</a> – MIPS</li>'
+            echo '</ul>'
+            echo '<h2>Instalacja pakietów</h2><pre><code>opkg update\nopkg install enigma2-plugin-extensions-e2iplayer</code></pre>'
+            echo '<p>Repozytorium przygotowane przez <strong>azman</strong>.</p>'
+            echo '</body></html>'
+          } > index.html
 
-      - name: Deploy to GitHub Pages
+      - name: Deploy to gh-pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: .
+          publish_branch: gh-pages
+          keep_files: false
           force_orphan: true
