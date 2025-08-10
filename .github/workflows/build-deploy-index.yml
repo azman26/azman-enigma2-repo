@@ -15,15 +15,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install dos2unix
+      - name: Fix script line endings
         run: |
           sudo apt-get update
           sudo apt-get install -y dos2unix
-
-      - name: Fix script line endings and make executable
-        run: |
           dos2unix ./opkg-utils/opkg-make-index
-          chmod +x ./opkg-utils/opkg-make-index
+
+      - name: Make opkg-make-index executable
+        run: chmod +x ./opkg-utils/opkg-make-index
         shell: bash
 
       - name: Generate OPKG Indexes
@@ -40,7 +39,7 @@ jobs:
           done
         shell: bash
 
-      - name: Validate generated Packages.gz files
+      - name: Validate Packages.gz files
         run: |
           for arch_dir in all armv7ahf-neon mips32el; do
             if [ -f "$arch_dir/Packages.gz" ]; then
@@ -59,7 +58,7 @@ jobs:
               echo "⚠️ WARNING: $arch_dir/Packages.gz not found, skipping."
             fi
           done
-        shell: bash
+        shell: /usr/bin/bash --noprofile --norc -e -o pipefail
 
       - name: Generate custom HTML index file
         run: |
