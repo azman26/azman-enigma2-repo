@@ -58,7 +58,7 @@ jobs:
               echo "⚠️ WARNING: $arch_dir/Packages.gz not found, skipping."
             fi
           done
-        shell: /usr/bin/bash --noprofile --norc -e -o pipefail
+        shell: bash --noprofile --norc -eo pipefail {0}
 
       - name: Generate custom HTML index file
         run: |
