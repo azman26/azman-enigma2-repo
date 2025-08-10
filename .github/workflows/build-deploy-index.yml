@@ -15,14 +15,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Fix script line endings
+      - name: Install dos2unix
         run: |
           sudo apt-get update
           sudo apt-get install -y dos2unix
-          dos2unix ./opkg-utils/opkg-make-index
 
-      - name: Make opkg-make-index executable
-        run: chmod +x ./opkg-utils/opkg-make-index
+      - name: Fix script line endings and make executable
+        run: |
+          dos2unix ./opkg-utils/opkg-make-index
+          chmod +x ./opkg-utils/opkg-make-index
         shell: bash
 
       - name: Generate OPKG Indexes
