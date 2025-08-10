@@ -15,51 +15,26 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install dos2unix
+      - name: Fix script line endings
         run: |
           sudo apt-get update
           sudo apt-get install -y dos2unix
-
-      - name: Fix script line endings
-        run: dos2unix ./opkg-utils/opkg-make-index
+          dos2unix ./opkg-utils/opkg-make-index
 
       - name: Make opkg-make-index executable
         run: chmod +x ./opkg-utils/opkg-make-index
         shell: bash
 
-      - name: Prepare build folders
-        run: |
-          mkdir -p build/all build/armv7ahf-neon build/mips32el
-
-      - name: Copy IPK files to build directory
+      - name: Generate OPKG Indexes
         run: |
           for arch_dir in all armv7ahf-neon mips32el; do
             if [ -d "$arch_dir" ]; then
-              echo "📦 Copying .ipk files to build/$arch_dir/"
-              cp "$arch_dir"/*.ipk "build/$arch_dir/" 2>/dev/null || echo "⚠️ No .ipk files found in $arch_dir"
+              echo "✅ Found and processing directory: $arch_dir"
+              ./opkg-utils/opkg-make-index "$arch_dir" > "$arch_dir/Packages"
+              gzip -c "$arch_dir/Packages" > "$arch_dir/Packages.gz"
+              rm "$arch_dir/Packages"
             else
-              echo "ℹ️ Directory $arch_dir does not exist, skipping copy."
-            fi
-          done
-        shell: bash
-
-      - name: Generate OPKG Indexes with debug info
-        run: |
-          for arch_dir in all armv7ahf-neon mips32el; do
-            if [ -d "build/$arch_dir" ]; then
-              echo "🔍 Files in build/$arch_dir/:"
-              ls -lh "build/$arch_dir/"
-
-              echo "🛠 Generating Packages file for build/$arch_dir"
-              ./opkg-utils/opkg-make-index "build/$arch_dir" > "build/$arch_dir/Packages"
-
-              echo "📄 Contents of build/$arch_dir/Packages:"
-              cat "build/$arch_dir/Packages"
-
-              gzip -c "build/$arch_dir/Packages" > "build/$arch_dir/Packages.gz"
-              rm "build/$arch_dir/Packages"
-            else
-              echo "ℹ️ Directory build/$arch_dir does not exist, skipping indexing."
+              echo "ℹ️ Directory $arch_dir does not exist, skipping."
             fi
           done
         shell: bash
@@ -67,56 +42,56 @@ jobs:
       - name: Validate generated Packages.gz files
         run: |
           for arch_dir in all armv7ahf-neon mips32el; do
-            if [ -f "build/$arch_dir/Packages.gz" ]; then
-              echo "🔍 Checking build/$arch_dir/Packages.gz..."
-              if [ ! -s "build/$arch_dir/Packages.gz" ]; then
-                echo "❌ ERROR: build/$arch_dir/Packages.gz is empty!"
+            if [ -f "$arch_dir/Packages.gz" ]; then
+              echo "🔍 Checking $arch_dir/Packages.gz..."
+              if [ ! -s "$arch_dir/Packages.gz" ]; then
+                echo "❌ ERROR: $arch_dir/Packages.gz is empty!"
                 exit 1
               fi
-              PKG_COUNT=$(gunzip -c "build/$arch_dir/Packages.gz" | grep -c "^Package:")
+              PKG_COUNT=$(gunzip -c "$arch_dir/Packages.gz" | grep -c "^Package:")
               if [ "$PKG_COUNT" -eq 0 ]; then
-                echo "❌ ERROR: build/$arch_dir/Packages.gz does not contain any package entries!"
+                echo "❌ ERROR: $arch_dir/Packages.gz does not contain any package entries!"
                 exit 1
               fi
-              echo "✅ build/$arch_dir/Packages.gz is valid — found $PKG_COUNT packages."
+              echo "✅ $arch_dir/Packages.gz is valid — found $PKG_COUNT packages."
             else
-              echo "⚠️ WARNING: build/$arch_dir/Packages.gz not found, skipping."
+              echo "⚠️ WARNING: $arch_dir/Packages.gz not found, skipping."
             fi
           done
         shell: bash
 
       - name: Generate custom HTML index file
         run: |
-          echo '<!DOCTYPE html>' > build/index.html
-          echo '<html lang="pl">' >> build/index.html
-          echo '<head>' >> build/index.html
-          echo '  <meta charset="UTF-8" />' >> build/index.html
-          echo '  <title>Repozytorium OPKG - Azman</title>' >> build/index.html
-          echo '</head>' >> build/index.html
-          echo '<body>' >> build/index.html
-          echo '  <h1>📦 Repozytorium OPKG dla Enigma2</h1>' >> build/index.html
-          echo '  <p>Aby dodać repozytorium, połącz się z tunerem przez SSH i wykonaj komendę:</p>' >> build/index.html
-          echo '  <pre><code>echo "src/gz azman-repo-all https://azman26.github.io/azman-enigma2-repo/all" > /etc/opkg/azman.conf</code></pre>' >> build/index.html
-          echo '  <h2>Dostępne architektury</h2>' >> build/index.html
-          echo '  <ul>' >> build/index.html
-          if [ -d "build/all" ]; then echo '    <li><a href="all/">all/</a> – pakiety niezależne od architektury (skórki, picony, wtyczki python)</li>' >> build/index.html; fi
-          if [ -d "build/armv7ahf-neon" ]; then echo '    <li><a href="armv7ahf-neon/">armv7ahf-neon/</a> – pakiety dla procesorów ARM</li>' >> build/index.html; fi
-          if [ -d "build/mips32el" ]; then echo '    <li><a href="mips32el/">mips32el/</a> – pakiety dla procesorów MIPS</li>' >> build/index.html; fi
-          echo '  </ul>' >> build/index.html
-          echo '  <h2>Instalacja pakietów</h2>' >> build/index.html
-          echo '  <pre><code># Zaktualizuj listę pakietów' >> build/index.html
-          echo 'opkg update' >> build/index.html
-          echo '# Zainstaluj wybrany pakiet (np. AzmanPanel)' >> build/index.html
-          echo 'opkg install enigma2-plugin-extensions-AzmanPanel' >> build/index.html
-          echo '</code></pre>' >> build/index.html
-          echo '  <p>Repozytorium przygotowane przez <strong>azman</strong>.</p>' >> build/index.html
-          echo '</body>' >> build/index.html
-          echo '</html>' >> build/index.html
+          echo '<!DOCTYPE html>' > index.html
+          echo '<html lang="pl">' >> index.html
+          echo '<head>' >> index.html
+          echo '  <meta charset="UTF-8" />' >> index.html
+          echo '  <title>Repozytorium OPKG - Azman</title>' >> index.html
+          echo '</head>' >> index.html
+          echo '<body>' >> index.html
+          echo '  <h1>📦 Repozytorium OPKG dla Enigma2</h1>' >> index.html
+          echo '  <p>Aby dodać repozytorium, połącz się z tunerem przez SSH i wykonaj komendę:</p>' >> index.html
+          echo '  <pre><code>echo "src/gz azman-repo-all https://azman26.github.io/azman-enigma2-repo/all" > /etc/opkg/azman.conf</code></pre>' >> index.html
+          echo '  <h2>Dostępne architektury</h2>' >> index.html
+          echo '  <ul>' >> index.html
+          if [ -d "all" ]; then echo '    <li><a href="all/">all/</a> – pakiety niezależne od architektury (skórki, picony, wtyczki python)</li>' >> index.html; fi
+          if [ -d "armv7ahf-neon" ]; then echo '    <li><a href="armv7ahf-neon/">armv7ahf-neon/</a> – pakiety dla procesorów ARM</li>' >> index.html; fi
+          if [ -d "mips32el" ]; then echo '    <li><a href="mips32el/">mips32el/</a> – pakiety dla procesorów MIPS</li>' >> index.html; fi
+          echo '  </ul>' >> index.html
+          echo '  <h2>Instalacja pakietów</h2>' >> index.html
+          echo '  <pre><code># Zaktualizuj listę pakietów' >> index.html
+          echo 'opkg update' >> index.html
+          echo '# Zainstaluj wybrany pakiet (np. AzmanPanel)' >> index.html
+          echo 'opkg install enigma2-plugin-extensions-AzmanPanel' >> index.html
+          echo '</code></pre>' >> index.html
+          echo '  <p>Repozytorium przygotowane przez <strong>azman</strong>.</p>' >> index.html
+          echo '</body>' >> index.html
+          echo '</html>' >> index.html
         shell: bash
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: build
+          publish_dir: .
           force_orphan: true
