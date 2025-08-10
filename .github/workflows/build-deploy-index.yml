@@ -15,26 +15,38 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Fix script line endings
+      - name: Install dos2unix
         run: |
           sudo apt-get update
           sudo apt-get install -y dos2unix
-          dos2unix ./opkg-utils/opkg-make-index
+
+      - name: Fix script line endings
+        run: dos2unix ./opkg-utils/opkg-make-index
 
       - name: Make opkg-make-index executable
         run: chmod +x ./opkg-utils/opkg-make-index
         shell: bash
 
-      - name: Prepare build directory and generate OPKG Indexes
+      - name: Prepare build folders
         run: |
-          mkdir -p build
+          mkdir -p build/all build/armv7ahf-neon build/mips32el
+
+      - name: Copy IPK files to build directory
+        run: |
           for arch_dir in all armv7ahf-neon mips32el; do
             if [ -d "$arch_dir" ]; then
-              echo "✅ Found and processing directory: $arch_dir"
-              mkdir -p "build/$arch_dir"
               echo "📦 Copying .ipk files to build/$arch_dir/"
-              cp "$arch_dir"/*.ipk "build/$arch_dir/" 2>/dev/null || echo "⚠️ No .ipk files in $arch_dir"
+              cp "$arch_dir"/*.ipk "build/$arch_dir/" 2>/dev/null || echo "⚠️ No .ipk files found in $arch_dir"
+            else
+              echo "ℹ️ Directory $arch_dir does not exist, skipping copy."
+            fi
+          done
+        shell: bash
 
+      - name: Generate OPKG Indexes with debug info
+        run: |
+          for arch_dir in all armv7ahf-neon mips32el; do
+            if [ -d "build/$arch_dir" ]; then
               echo "🔍 Files in build/$arch_dir/:"
               ls -lh "build/$arch_dir/"
 
@@ -47,7 +59,7 @@ jobs:
               gzip -c "build/$arch_dir/Packages" > "build/$arch_dir/Packages.gz"
               rm "build/$arch_dir/Packages"
             else
-              echo "ℹ️ Directory $arch_dir does not exist, skipping."
+              echo "ℹ️ Directory build/$arch_dir does not exist, skipping indexing."
             fi
           done
         shell: bash
@@ -73,7 +85,7 @@ jobs:
           done
         shell: bash
 
-      - name: Generate custom HTML index file in build/
+      - name: Generate custom HTML index file
         run: |
           echo '<!DOCTYPE html>' > build/index.html
           echo '<html lang="pl">' >> build/index.html
@@ -87,9 +99,9 @@ jobs:
           echo '  <pre><code>echo "src/gz azman-repo-all https://azman26.github.io/azman-enigma2-repo/all" > /etc/opkg/azman.conf</code></pre>' >> build/index.html
           echo '  <h2>Dostępne architektury</h2>' >> build/index.html
           echo '  <ul>' >> build/index.html
-          if [ -d "all" ]; then echo '    <li><a href="all/">all/</a> – pakiety niezależne od architektury (skórki, picony, wtyczki python)</li>' >> build/index.html; fi
-          if [ -d "armv7ahf-neon" ]; then echo '    <li><a href="armv7ahf-neon/">armv7ahf-neon/</a> – pakiety dla procesorów ARM</li>' >> build/index.html; fi
-          if [ -d "mips32el" ]; then echo '    <li><a href="mips32el/">mips32el/</a> – pakiety dla procesorów MIPS</li>' >> build/index.html; fi
+          if [ -d "build/all" ]; then echo '    <li><a href="all/">all/</a> – pakiety niezależne od architektury (skórki, picony, wtyczki python)</li>' >> build/index.html; fi
+          if [ -d "build/armv7ahf-neon" ]; then echo '    <li><a href="armv7ahf-neon/">armv7ahf-neon/</a> – pakiety dla procesorów ARM</li>' >> build/index.html; fi
+          if [ -d "build/mips32el" ]; then echo '    <li><a href="mips32el/">mips32el/</a> – pakiety dla procesorów MIPS</li>' >> build/index.html; fi
           echo '  </ul>' >> build/index.html
           echo '  <h2>Instalacja pakietów</h2>' >> build/index.html
           echo '  <pre><code># Zaktualizuj listę pakietów' >> build/index.html
@@ -102,7 +114,7 @@ jobs:
           echo '</html>' >> build/index.html
         shell: bash
 
-      - name: Deploy to GitHub Pages from build/
+      - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
