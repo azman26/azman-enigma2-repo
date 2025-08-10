@@ -1,0 +1,35 @@
+name: Build OPKG Index
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Install opkg-utils
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y opkg-utils gzip
+
+      - name: Generate Packages & Packages.gz
+        run: |
+          for dir in */; do
+            if [ -d "$dir" ]; then
+              opkg-make-index "$dir" > "$dir/Packages"
+              gzip -c "$dir/Packages" > "$dir/Packages.gz"
+            fi
+          done
+
+      - name: Commit & Push Packages
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add */Packages */Packages.gz
+          git commit -m "Auto-update Packages index" || echo "No changes to commit"
+          git push
