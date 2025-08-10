@@ -15,7 +15,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install dos2unix
+      - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y dos2unix
@@ -25,41 +25,48 @@ jobs:
           dos2unix ./opkg-utils/opkg-make-index
           chmod +x ./opkg-utils/opkg-make-index
 
-      - name: Generate OPKG Indexes
+      - name: Create build directory
+        run: |
+          rm -rf build
+          mkdir -p build
+
+      - name: Generate OPKG Indexes in build/
         run: |
           for arch_dir in all armv7ahf-neon mips32el; do
             if [ -d "$arch_dir" ]; then
               echo "✅ Found and processing: $arch_dir"
-              ./opkg-utils/opkg-make-index "$arch_dir" > "$arch_dir/Packages"
-              gzip -f "$arch_dir/Packages"
+              mkdir -p "build/$arch_dir"
+              cp "$arch_dir"/* "build/$arch_dir"/
+              ./opkg-utils/opkg-make-index "build/$arch_dir" > "build/$arch_dir/Packages"
+              gzip -f "build/$arch_dir/Packages"
             else
               echo "ℹ️ Directory $arch_dir does not exist, skipping."
             fi
           done
 
-      - name: Generate index.html
+      - name: Generate index.html in build/
         run: |
           {
             echo '<!DOCTYPE html>'
             echo '<html lang="pl"><head><meta charset="UTF-8"><title>Repozytorium OPKG - Azman</title></head><body>'
             echo '<h1>📦 Repozytorium OPKG dla Enigma2</h1>'
             echo '<p>Aby dodać repozytorium, połącz się z tunerem przez SSH i wykonaj:</p>'
-            echo '<pre><code>echo "src/gz azman-repo-all https://azman26.github.io/azman-enigma2-repo/all" > /etc/opkg/azman.conf</code></pre>'
+            echo '<pre><code>echo "src/gz azman-opkg https://azman26.github.io/azman-enigma2-repo/all" > /etc/opkg/azman.conf</code></pre>'
             echo '<h2>Dostępne architektury</h2><ul>'
-            [ -d "all" ] && echo '<li><a href="all/">all/</a> – niezależne od architektury</li>'
-            [ -d "armv7ahf-neon" ] && echo '<li><a href="armv7ahf-neon/">armv7ahf-neon/</a> – ARM</li>'
-            [ -d "mips32el" ] && echo '<li><a href="mips32el/">mips32el/</a> – MIPS</li>'
+            [ -d "build/all" ] && echo '<li><a href="all/">all/</a> – niezależne od architektury</li>'
+            [ -d "build/armv7ahf-neon" ] && echo '<li><a href="armv7ahf-neon/">armv7ahf-neon/</a> – ARM</li>'
+            [ -d "build/mips32el" ] && echo '<li><a href="mips32el/">mips32el/</a> – MIPS</li>'
             echo '</ul>'
-            echo '<h2>Instalacja pakietów</h2><pre><code>opkg update\nopkg install enigma2-plugin-extensions-e2iplayer</code></pre>'
+            echo '<h2>Instalacja pakietów</h2><pre><code>opkg update\opkg install enigma2-plugin-extensions-AzmanPanel</code></pre>'
             echo '<p>Repozytorium przygotowane przez <strong>azman</strong>.</p>'
             echo '</body></html>'
-          } > index.html
+          } > build/index.html
 
       - name: Deploy to gh-pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: .
+          publish_dir: build
           publish_branch: gh-pages
           keep_files: false
           force_orphan: true
