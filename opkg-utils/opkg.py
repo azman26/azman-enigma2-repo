@@ -43,7 +43,7 @@ from stat import ST_SIZE
 import arfile
 import tarfile
 import textwrap
-import io  # <--- dodane import io
+import io  # <--- potrzebne do TextIOWrapper
 
 class Version:
     """A class for holding parsed package version information."""
@@ -150,7 +150,7 @@ class Package:
                 control = tarf.extractfile("./control")
 
             if control is not None:
-                control = io.TextIOWrapper(control, encoding='utf-8')  # <-- tutaj poprawka
+                control = io.TextIOWrapper(control, encoding='utf-8')
                 try:
                     self.read_control(control)
                 except TypeError as e:
@@ -160,7 +160,7 @@ class Package:
                 sys.stderr.write("Control file not found in %s\n" % fn)
 
             tarf.close()
-            tarStream.close()
+            # usunięto tarStream.close()
 
             f.seek(0)
             tarStream = ar.open("data.tar.gz")
@@ -168,7 +168,7 @@ class Package:
             self.file_list = tarf.getnames()
             self.file_list = list(map(lambda a: ["./", ""][a.startswith("./")] + a, self.file_list))
             tarf.close()
-            tarStream.close()
+            # usunięto tarStream.close()
             f.close()
 
         self.scratch_dir = None
