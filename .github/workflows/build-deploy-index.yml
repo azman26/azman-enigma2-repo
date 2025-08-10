@@ -15,10 +15,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Show repo files (debug)
-        run: ls -l
-
-      - name: Generate OPKG Index files
+      - name: Generate OPKG Indexes
         run: |
           for arch_dir in all armv7ahf-neon mips32el; do
             if [ -d "$arch_dir" ]; then
@@ -30,32 +27,32 @@ jobs:
           done
         shell: bash
 
-      - name: Create simple index.html
+      - name: Create index.html page
         run: |
           cat > index.html <<EOF
-          <!DOCTYPE html>
-          <html lang="pl">
-          <head>
-            <meta charset="UTF-8" />
-            <title>Repozytorium OPKG - Azman</title>
-          </head>
-          <body>
-            <h1>📦 Repozytorium OPKG dla Enigma2</h1>
-            <p>Dodaj poniższy feed do swojego tunera Enigma2:</p>
-            <pre><code>src/gz azman-all https://azman26.github.io/azman-enigma2-repo/all</code></pre>
-            <h2>Dostępne architektury</h2>
-            <ul>
-              <li><a href="all/">all/</a> – pakiety niezależne od architektury</li>
-              <li><a href="armv7ahf-neon/">armv7ahf-neon/</a></li>
-              <li><a href="mips32el/">mips32el/</a></li>
-            </ul>
-            <h2>Przykładowa instalacja</h2>
-            <pre><code>opkg update
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <title>Repozytorium OPKG - Azman</title>
+</head>
+<body>
+  <h1>📦 Repozytorium OPKG dla Enigma2</h1>
+  <p>Dodaj poniższy feed do swojego tunera Enigma2:</p>
+  <pre><code>src/gz azman-all https://azman26.github.io/azman-enigma2-repo/all</code></pre>
+  <h2>Dostępne architektury</h2>
+  <ul>
+    <li><a href="all/">all/</a> – pakiety niezależne od architektury</li>
+    <li><a href="armv7ahf-neon/">armv7ahf-neon/</a></li>
+    <li><a href="mips32el/">mips32el/</a></li>
+  </ul>
+  <h2>Przykładowa instalacja</h2>
+  <pre><code>opkg update
 opkg install plugin.nazwa</code></pre>
-            <p>Repozytorium przygotowane przez <strong>azman</strong>.</p>
-          </body>
-          </html>
-          EOF
+  <p>Repozytorium przygotowane przez <strong>azman</strong>.</p>
+</body>
+</html>
+EOF
         shell: bash
 
       - name: Deploy to GitHub Pages
