@@ -141,7 +141,7 @@ class Package:
             self.filename = os.path.basename(fn)
             ar = arfile.ArFile(f, fn)
             tarStream = ar.open("control.tar.gz")
-            tarf = tarfile.open("control.tar.gz", "r", tarStream)
+            tarf = tarfile.open(fileobj=tarStream, mode="r:gz")
 
             try:
                 control = tarf.extractfile("control")
@@ -152,6 +152,19 @@ class Package:
             except TypeError as e:
                 sys.stderr.write("Cannot read control file '%s' - %s\n" % (fn, e))
             control.close()
+
+            # don't forget to close tarfile
+            tarf.close()
+            tarStream.close()
+
+            f.seek(0)
+            tarStream = ar.open("data.tar.gz")
+            tarf = tarfile.open(fileobj=tarStream, mode="r:gz")
+            self.file_list = tarf.getnames()
+            self.file_list = list(map(lambda a: ["./", ""][a.startswith("./")] + a, self.file_list))
+            tarf.close()
+            tarStream.close()
+            f.close()
 
         self.scratch_dir = None
         self.file_dir = None
@@ -326,7 +339,7 @@ class Package:
         f = open(self.fn, "rb")
         ar = arfile.ArFile(f, self.fn)
         tarStream = ar.open("data.tar.gz")
-        tarf = tarfile.open("data.tar.gz", "r", tarStream)
+        tarf = tarfile.open(fileobj=tarStream, mode="r:gz")
         self.file_list = tarf.getnames()
         self.file_list = list(map(lambda a: ["./", ""][a.startswith("./")] + a, self.file_list))
         f.close()
