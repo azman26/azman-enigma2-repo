@@ -15,19 +15,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Debug current directory and contents
-        run: |
-          pwd
-          ls -l
-          ls -l all || echo "Folder 'all' nie istnieje"
-          ls -l armv7ahf-neon || echo "Folder 'armv7ahf-neon' nie istnieje"
-          ls -l mips32el || echo "Folder 'mips32el' nie istnieje"
-          ls -l opkg-utils
-
       - name: Make opkg-make-index executable
         run: chmod +x ./opkg-utils/opkg-make-index
+        shell: bash
 
-      - name: Generate OPKG Indexes using opkg-make-index
+      - name: Generate OPKG Indexes using opkg-make-index script
         run: |
           for arch_dir in all armv7ahf-neon mips32el; do
             if [ -d "$arch_dir" ]; then
@@ -43,34 +35,28 @@ jobs:
 
       - name: Generate custom HTML index file
         run: |
-          cat > index.html <<EOF
-<!DOCTYPE html>
-<html lang="pl">
-<head>
-  <meta charset="UTF-8">
-  <title>Repozytorium OPKG - Azman</title>
-</head>
-<body>
-  <h1>📦 Repozytorium OPKG dla Enigma2</h1>
-  <p>Dodaj poniższy feed do swojego tunera Enigma2:</p>
-
-  <pre><code>src/gz azman-all https://azman26.github.io/azman-enigma2-repo/all</code></pre>
-
-  <h2>Dostępne architektury</h2>
-  <ul>
-    <li><a href="all/">all/</a> – pakiety niezależne od architektury</li>
-    <li><a href="armv7ahf-neon/">armv7ahf-neon/</a></li>
-    <li><a href="mips32el/">mips32el/</a></li>
-  </ul>
-
-  <h2>Przykładowa instalacja</h2>
-  <pre><code>opkg update
-opkg install plugin.nazwa</code></pre>
-
-  <p>Repozytorium przygotowane przez <strong>azman</strong>.</p>
-</body>
-</html>
-EOF
+          echo '<!DOCTYPE html>' > index.html
+          echo '<html lang="pl">' >> index.html
+          echo '<head>' >> index.html
+          echo '  <meta charset="UTF-8" />' >> index.html
+          echo '  <title>Repozytorium OPKG - Azman</title>' >> index.html
+          echo '</head>' >> index.html
+          echo '<body>' >> index.html
+          echo '  <h1>📦 Repozytorium OPKG dla Enigma2</h1>' >> index.html
+          echo '  <p>Dodaj poniższy feed do swojego tunera Enigma2:</p>' >> index.html
+          echo '  <pre><code>src/gz azman-all https://azman26.github.io/azman-enigma2-repo/all</code></pre>' >> index.html
+          echo '  <h2>Dostępne architektury</h2>' >> index.html
+          echo '  <ul>' >> index.html
+          echo '    <li><a href="all/">all/</a> – pakiety niezależne od architektury</li>' >> index.html
+          echo '    <li><a href="armv7ahf-neon/">armv7ahf-neon/</a></li>' >> index.html
+          echo '    <li><a href="mips32el/">mips32el/</a></li>' >> index.html
+          echo '  </ul>' >> index.html
+          echo '  <h2>Przykładowa instalacja</h2>' >> index.html
+          echo '  <pre><code>opkg update' >> index.html
+          echo 'opkg install plugin.nazwa</code></pre>' >> index.html
+          echo '  <p>Repozytorium przygotowane przez <strong>azman</strong>.</p>' >> index.html
+          echo '</body>' >> index.html
+          echo '</html>' >> index.html
         shell: bash
 
       - name: Deploy to GitHub Pages
