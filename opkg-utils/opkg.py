@@ -53,23 +53,19 @@ class Version:
     def _versioncompare(self, selfversion, refversion):
         if not selfversion: selfversion = ""
         if not refversion: refversion = ""
-        while 1:
-            ## first look for non-numeric version component
+        while True:
+            # first look for non-numeric version component
             selfm = re.match('([^0-9]*)(.*)', selfversion)
-            #print(('selfm', selfm.groups()))
             (selfalpha, selfversion) = selfm.groups()
             refm = re.match('([^0-9]*)(.*)', refversion)
-            #print(('refm', refm.groups())
             (refalpha, refversion) = refm.groups()
             if (selfalpha > refalpha):
                 return 1
             elif (selfalpha < refalpha):
                 return -1
-            ## now look for numeric version component
+            # now look for numeric version component
             (selfnum, selfversion) = re.match('([0-9]*)(.*)', selfversion).groups()
             (refnum, refversion) = re.match('([0-9]*)(.*)', refversion).groups()
-            #print(('selfnum', selfnum, selfversion)
-            #print(('refnum', refnum, refversion)
             if (selfnum != ''):
                 selfnum = int(selfnum)
             else:
@@ -93,12 +89,9 @@ class Version:
         else:
             self_ver_comps = re.match(r"(.+?)(-r.+)?$", self.version)
             ref_ver_comps = re.match(r"(.+?)(-r.+)?$", ref.version)
-            #print((self_ver_comps.group(1), self_ver_comps.group(2)))
-            #print((ref_ver_comps.group(1), ref_ver_comps.group(2)))
             r = self._versioncompare(self_ver_comps.group(1), ref_ver_comps.group(1))
             if r == 0:
                 r = self._versioncompare(self_ver_comps.group(2), ref_ver_comps.group(2))
-            #print("compare: %s vs %s = %d" % (self, ref, r))
             return r
 
     def __str__(self):
@@ -133,9 +126,6 @@ class Package:
         self.section = None
         self.filename_header = None
         self.file_list = []
-        # md5 and size is lazy attribute, computed on demand
-        #self.md5 = None
-        #self.size = None
         self.installed_size = None
         self.filename = None
         self.file_ext_opk = "ipk"
@@ -147,13 +137,8 @@ class Package:
         self.license = None
 
         if fn:
-            # see if it is deb format
             f = open(fn, "rb")
-
             self.filename = os.path.basename(fn)
-
-            ## sys.stderr.write("  extracting control.tar.gz from %s\n"% (fn,)) 
-
             ar = arfile.ArFile(f, fn)
             tarStream = ar.open("control.tar.gz")
             tarf = tarfile.open("control.tar.gz", "r", tarStream)
@@ -182,7 +167,6 @@ class Package:
             raise AttributeError(name)
 
     def _computeFileMD5(self):
-        # compute the MD5.
         if not self.fn:
             self.md5 = 'Unknown'
         else:
@@ -197,44 +181,42 @@ class Package:
 
     def _get_file_size(self):
         if not self.fn:
-            self.size = 0;
+            self.size = 0
         else:
             stat = os.stat(self.fn)
             self.size = stat[ST_SIZE]
         return int(self.size)
 
     def read_control(self, control):
-        import os
-
         line = control.readline()
-        while 1:
-            if not line: break
-            line = line.rstrip()
-            lineparts = re.match(r'([\w-]*?):\s*(.*)', str(line))
+        while line:
+            line = line.rstrip('\r\n')
+            lineparts = re.match(r'([\w-]+):\s*(.*)', line)
             if lineparts:
                 name = lineparts.group(1).lower()
                 value = lineparts.group(2)
-                while 1:
-                    line = control.readline()
-                    if not line: break
-                    if line[0] != ' ': break
-                    value = value + '\n' + line
+                # Read continuation lines starting with space
+                while True:
+                    pos = control.tell()
+                    next_line = control.readline()
+                    if not next_line or not next_line.startswith(' '):
+                        control.seek(pos)
+                        break
+                    value += '\n' + next_line.lstrip(' ').rstrip('\r\n')
                 if name == 'size':
-                    self.size = int(value)
+                    try:
+                        self.size = int(value)
+                    except ValueError:
+                        self.size = 0
                 elif name == 'md5sum':
                     self.md5 = value
                 elif name in self.__dict__:
                     self.__dict__[name] = value
                 else:
-                    print("Lost field %s, %s" % (name,value))
-                    pass
-
-                if line and line[0] == '\n':
-                    return # consumes one blank line at end of package descriptoin
+                    print(f"Lost field: {name} = {value}")
             else:
-                line = control.readline()
                 pass
-        return    
+            line = control.readline()
 
     def _setup_scratch_area(self):
         self.scratch_dir = "%s/%sopkg" % (tempfile.gettempdir(),
@@ -286,43 +268,43 @@ class Package:
     def set_depends(self, depends):
         self.depends = depends
 
-    def get_depends(self, depends):
+    def get_depends(self):
         return self.depends
 
     def set_provides(self, provides):
         self.provides = provides
 
-    def get_provides(self, provides):
+    def get_provides(self):
         return self.provides
 
     def set_replaces(self, replaces):
         self.replaces = replaces
 
-    def get_replaces(self, replaces):
+    def get_replaces(self):
         return self.replaces
 
     def set_conflicts(self, conflicts):
         self.conflicts = conflicts
 
-    def get_conflicts(self, conflicts):
+    def get_conflicts(self):
         return self.conflicts
 
     def set_suggests(self, suggests):
         self.suggests = suggests
 
-    def get_suggests(self, suggests):
+    def get_suggests(self):
         return self.suggests
 
     def set_section(self, section):
         self.section = section
 
-    def get_section(self, section):
+    def get_section(self):
         return self.section
 
     def set_license(self, license):
         self.license = license
 
-    def get_license(self, license):
+    def get_license(self):
         return self.license
 
     def get_file_list_dir(self, directory):
@@ -332,14 +314,10 @@ class Package:
                 rc = subprocess.check_output(cmd, shell=True)
                 if rc != "":
                     newfn = str(rc).split()[0]
-#                    sys.stderr.write("Package '%s' with empty fn and filename is '%s' was found in '%s', updating fn\n" % (self.package, self.filename, newfn))
                     self.fn = newfn
-            except OSError as e:
-                sys.stderr.write("Cannot find current fn for package '%s' filename '%s' in dir '%s'\n(%s)\n" % (self.package, self.filename, directory, e))
-            except IOError as e:
+            except (OSError, IOError) as e:
                 sys.stderr.write("Cannot find current fn for package '%s' filename '%s' in dir '%s'\n(%s)\n" % (self.package, self.filename, directory, e))
         return self.get_file_list()
-
 
     def get_file_list(self):
         if not self.fn:
@@ -350,8 +328,7 @@ class Package:
         tarStream = ar.open("data.tar.gz")
         tarf = tarfile.open("data.tar.gz", "r", tarStream)
         self.file_list = tarf.getnames()
-        self.file_list = map(lambda a: ["./", ""][a.startswith("./")] + a, self.file_list)
-
+        self.file_list = list(map(lambda a: ["./", ""][a.startswith("./")] + a, self.file_list))
         f.close()
         return self.file_list
 
@@ -363,18 +340,14 @@ class Package:
 
     def write_package(self, dirname):
         self._setup_scratch_area()
-        file = open("%s/control" % self.meta_dir, 'w')
-        file.write(str(self))
-        file.close()
+        with open("%s/control" % self.meta_dir, 'w') as file:
+            file.write(str(self))
 
-        cmd = "cd %s ; tar cvfz %s/control.tar.gz control" % (self.meta_dir,
-                                                              self.scratch_dir)
+        cmd = "cd %s ; tar cvfz %s/control.tar.gz control" % (self.meta_dir, self.scratch_dir)
 
         cmd_out, cmd_in, cmd_err = os.popen3(cmd)
-        
         while cmd_err.readline() != "":
             pass
-
         cmd_out.close()
         cmd_in.close()
         cmd_err.close()
@@ -382,31 +355,21 @@ class Package:
         bits = "control.tar.gz"
 
         if self.file_list:
-                cmd = "cd %s ; tar cvfz %s/data.tar.gz" % (self.file_dir,
-                                                              self.scratch_dir)
-
-                cmd_out, cmd_in, cmd_err = os.popen3(cmd)
-
-                while cmd_err.readline() != "":
-                    pass
-
-                cmd_out.close()
-                cmd_in.close()
-                cmd_err.close()
-
-                bits = bits + " data.tar.gz"
+            cmd = "cd %s ; tar cvfz %s/data.tar.gz" % (self.file_dir, self.scratch_dir)
+            cmd_out, cmd_in, cmd_err = os.popen3(cmd)
+            while cmd_err.readline() != "":
+                pass
+            cmd_out.close()
+            cmd_in.close()
+            cmd_err.close()
+            bits = bits + " data.tar.gz"
 
         file = "%s_%s_%s.%s" % (self.package, self.version, self.architecture, self.get_package_extension())
-        cmd = "cd %s ; tar cvfz %s/%s %s" % (self.scratch_dir,
-                                             dirname,
-                                             file,
-                                             bits)
+        cmd = "cd %s ; tar cvfz %s/%s %s" % (self.scratch_dir, dirname, file, bits)
 
         cmd_out, cmd_in, cmd_err = os.popen3(cmd)
-
         while cmd_err.readline() != "":
             pass
-
         cmd_out.close()
         cmd_in.close()
         cmd_err.close()
@@ -426,40 +389,34 @@ class Package:
     def __str__(self):
         out = ""
 
-        # XXX - Some checks need to be made, and some exceptions
-        #       need to be thrown. -- a7r
-
-        if self.package: out = out + "Package: %s\n" % (self.package)
-        if self.version: out = out + "Version: %s\n" % (self.version)
-        if self.depends: out = out + "Depends: %s\n" % (self.depends)
-        if self.provides: out = out + "Provides: %s\n" % (self.provides)
-        if self.replaces: out = out + "Replaces: %s\n" % (self.replaces)
-        if self.conflicts: out = out + "Conflicts: %s\n" % (self.conflicts)
-        if self.suggests: out = out + "Suggests: %s\n" % (self.suggests)
-        if self.recommends: out = out + "Recommends: %s\n" % (self.recommends)
-        if self.section: out = out + "Section: %s\n" % (self.section)
-        if self.architecture: out = out + "Architecture: %s\n" % (self.architecture)
-        if self.maintainer: out = out + "Maintainer: %s\n" % (self.maintainer)
-        if self.md5: out = out + "MD5Sum: %s\n" % (self.md5)
-        if self.size: out = out + "Size: %d\n" % int(self.size)
-        if self.installed_size: out = out + "InstalledSize: %d\n" % int(self.installed_size)
-        if self.filename: out = out + "Filename: %s\n" % (self.filename)
-        if self.source: out = out + "Source: %s\n" % (self.source)
+        if self.package: out += "Package: %s\n" % (self.package)
+        if self.version: out += "Version: %s\n" % (self.version)
+        if self.depends: out += "Depends: %s\n" % (self.depends)
+        if self.provides: out += "Provides: %s\n" % (self.provides)
+        if self.replaces: out += "Replaces: %s\n" % (self.replaces)
+        if self.conflicts: out += "Conflicts: %s\n" % (self.conflicts)
+        if self.suggests: out += "Suggests: %s\n" % (self.suggests)
+        if self.recommends: out += "Recommends: %s\n" % (self.recommends)
+        if self.section: out += "Section: %s\n" % (self.section)
+        if self.architecture: out += "Architecture: %s\n" % (self.architecture)
+        if self.maintainer: out += "Maintainer: %s\n" % (self.maintainer)
+        if self.md5: out += "MD5Sum: %s\n" % (self.md5)
+        if self.size: out += "Size: %d\n" % int(self.size)
+        if self.installed_size: out += "InstalledSize: %d\n" % int(self.installed_size)
+        if self.filename: out += "Filename: %s\n" % (self.filename)
+        if self.source: out += "Source: %s\n" % (self.source)
         if self.description:
             printable_description = textwrap.dedent(self.description).strip()
-            out = out + "Description: %s\n" % textwrap.fill(printable_description, width=74, initial_indent=' ', subsequent_indent=' ')
-        if self.oe: out = out + "OE: %s\n" % (self.oe)
-        if self.homepage: out = out + "HomePage: %s\n" % (self.homepage)
-        if self.license: out = out + "License: %s\n" % (self.license)
-        if self.priority: out = out + "Priority: %s\n" % (self.priority)
-        if self.tags: out = out + "Tags: %s\n" % (self.tags)
-        out = out + "\n"
-
+            out += "Description: %s\n" % textwrap.fill(printable_description, width=74, initial_indent=' ', subsequent_indent=' ')
+        if self.oe: out += "OE: %s\n" % (self.oe)
+        if self.homepage: out += "HomePage: %s\n" % (self.homepage)
+        if self.license: out += "License: %s\n" % (self.license)
+        if self.priority: out += "Priority: %s\n" % (self.priority)
+        if self.tags: out += "Tags: %s\n" % (self.tags)
+        out += "\n"
         return out
 
     def __del__(self):
-        # XXX - Why is the `os' module being yanked out before Package objects
-        #       are being destroyed?  -- a7r
         pass
 
 class Packages:
@@ -502,8 +459,8 @@ class Packages:
         names = list(self.packages.keys())
         names.sort()
         for name in names:
-            f.write(self.packages[name].__repr__())
-        return    
+            f.write(str(self.packages[name]))
+        f.close()
 
     def keys(self):
         return list(self.packages.keys())
@@ -525,22 +482,7 @@ if __name__ == "__main__":
     package.set_version("0.1-fam1")
     package.set_architecture("arm")
     package.set_maintainer("Testing <testing@testing.testing>")
-    package.set_depends("libc")
-    package.set_description("A test of the APIs. And very long descriptions so often used in oe-core\nfoo\n\n\nbar")
-
-    print("<")
-    sys.stdout.write(str(package))
-    print(">")
-    f = open("/tmp/control", "w")
-    f.write(str(package))
-    f.close()
-
-    f = open("/tmp/control", "r")
-    package2 = Package()
-    package2.read_control(f)
-    print("<")
-    sys.stdout.write(str(package2))
-    print(">")
-
-    package.write_package("/tmp")
-
+    package.set_depends("python >= 1.0")
+    package.set_description("A long\nlonger\nreally longer description\n")
+    print(package)
+``
