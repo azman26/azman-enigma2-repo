@@ -6,49 +6,60 @@ on:
       - main
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.x"
+      - name: Show repo files (debug)
+        run: ls -l
 
-      - name: Install opkg-utils
+      - name: Generate OPKG Index files
         run: |
-          python3 -m pip install --upgrade pip
-          pip install opkg-utils
+          for arch_dir in all armv7ahf-neon mips32el; do
+            if [ -d "$arch_dir" ]; then
+              echo "Processing $arch_dir"
+              python3 ./opkg-utils/opkg-make-index -r "$arch_dir" > "$arch_dir/Packages"
+              gzip -c "$arch_dir/Packages" > "$arch_dir/Packages.gz"
+              rm "$arch_dir/Packages"
+            fi
+          done
+        shell: bash
 
-      - name: Generate Packages index
+      - name: Create simple index.html
         run: |
-          cd all
-          opkg-make-index . > Packages
-          gzip -kf Packages
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: opkg-index
-          path: all/Packages*
-
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Download artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: opkg-index
-          path: all
+          cat > index.html <<EOF
+          <!DOCTYPE html>
+          <html lang="pl">
+          <head>
+            <meta charset="UTF-8" />
+            <title>Repozytorium OPKG - Azman</title>
+          </head>
+          <body>
+            <h1>📦 Repozytorium OPKG dla Enigma2</h1>
+            <p>Dodaj poniższy feed do swojego tunera Enigma2:</p>
+            <pre><code>src/gz azman-all https://azman26.github.io/azman-enigma2-repo/all</code></pre>
+            <h2>Dostępne architektury</h2>
+            <ul>
+              <li><a href="all/">all/</a> – pakiety niezależne od architektury</li>
+              <li><a href="armv7ahf-neon/">armv7ahf-neon/</a></li>
+              <li><a href="mips32el/">mips32el/</a></li>
+            </ul>
+            <h2>Przykładowa instalacja</h2>
+            <pre><code>opkg update
+opkg install plugin.nazwa</code></pre>
+            <p>Repozytorium przygotowane przez <strong>azman</strong>.</p>
+          </body>
+          </html>
+          EOF
+        shell: bash
 
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
+        uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: .
