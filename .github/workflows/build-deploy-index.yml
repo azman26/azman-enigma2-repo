@@ -25,14 +25,14 @@ jobs:
         run: chmod +x ./opkg-utils/opkg-make-index
         shell: bash
 
-      - name: Generate OPKG Indexes
+      - name: Generate OPKG Indexes (overwrite without deleting)
         run: |
           for arch_dir in all armv7ahf-neon mips32el; do
             if [ -d "$arch_dir" ]; then
               echo "✅ Found and processing directory: $arch_dir"
+              # Nadpisywanie pliku Packages czystą wersją
               ./opkg-utils/opkg-make-index "$arch_dir" > "$arch_dir/Packages"
               gzip -c "$arch_dir/Packages" > "$arch_dir/Packages.gz"
-              rm "$arch_dir/Packages"
             else
               echo "ℹ️ Directory $arch_dir does not exist, skipping."
             fi
