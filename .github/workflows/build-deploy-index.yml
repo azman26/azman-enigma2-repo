@@ -60,7 +60,7 @@ jobs:
           done
         shell: bash --noprofile --norc -eo pipefail {0}
 
-      - name: Generate custom HTML index file
+      - name: Generate custom HTML index file (main)
         run: |
           echo '<!DOCTYPE html>' > index.html
           echo '<html lang="pl">' >> index.html
@@ -87,6 +87,38 @@ jobs:
           echo '  <p>Repozytorium przygotowane przez <strong>azman</strong>.</p>' >> index.html
           echo '</body>' >> index.html
           echo '</html>' >> index.html
+        shell: bash
+
+      - name: Generate HTML index in all directory
+        run: |
+          if [ -d "all" ] && [ -f "all/Packages" ]; then
+            echo "Generuję index.html w katalogu all"
+            echo '<!DOCTYPE html>' > all/index.html
+            echo '<html lang="pl"><head><meta charset="UTF-8"><title>Pakiety all</title></head><body>' >> all/index.html
+            echo '<h1>Pakiety w katalogu all</h1>' >> all/index.html
+            echo '<ul>' >> all/index.html
+
+            awk '
+            BEGIN { pkg=""; ver=""; }
+            /^Package:/ { pkg=$2; }
+            /^Version:/ { ver=$2; }
+            /^$/ {
+              if (pkg != "") {
+                printf "<li><b>%s</b> — wersja %s</li>\n", pkg, ver;
+              }
+              pkg=""; ver="";
+            }
+            END {
+              if (pkg != "") {
+                printf "<li><b>%s</b> — wersja %s</li>\n", pkg, ver;
+              }
+            }
+            ' all/Packages >> all/index.html
+
+            echo '</ul></body></html>' >> all/index.html
+          else
+            echo "Katalog all lub plik Packages nie istnieje, pomijam generowanie index.html w all"
+          fi
         shell: bash
 
       - name: Add .nojekyll file to prevent GitHub Pages Jekyll processing
