@@ -30,7 +30,6 @@ jobs:
           for arch_dir in all armv7ahf-neon mips32el; do
             if [ -d "$arch_dir" ]; then
               echo "✅ Found and processing directory: $arch_dir"
-              # Nadpisywanie pliku Packages czystą wersją
               ./opkg-utils/opkg-make-index "$arch_dir" > "$arch_dir/Packages"
               gzip -c "$arch_dir/Packages" > "$arch_dir/Packages.gz"
             else
@@ -98,19 +97,19 @@ jobs:
             echo '<h1>Pakiety w katalogu all</h1>' >> all/index.html
             echo '<ul>' >> all/index.html
 
-            awk '
+            awk -v repo_url="https://github.com/azman26/azman-enigma2-repo/raw/gh-pages/all" '
             BEGIN { pkg=""; ver=""; }
             /^Package:/ { pkg=$2; }
             /^Version:/ { ver=$2; }
             /^$/ {
               if (pkg != "") {
-                printf "<li><a href=\"%s.ipk\"><b>%s</b></a> — wersja %s</li>\n", pkg, pkg, ver;
+                printf "<li><a href=\"" repo_url "/%s.ipk\"><b>%s</b></a> — wersja %s</li>\n", pkg, pkg, ver;
               }
               pkg=""; ver="";
             }
             END {
               if (pkg != "") {
-                printf "<li><a href=\"%s.ipk\"><b>%s</b></a> — wersja %s</li>\n", pkg, pkg, ver;
+                printf "<li><a href=\"" repo_url "/%s.ipk\"><b>%s</b></a> — wersja %s</li>\n", pkg, pkg, ver;
               }
             }
             ' all/Packages >> all/index.html
