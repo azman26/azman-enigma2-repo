@@ -31,20 +31,19 @@ def generate_index(dirpath):
             sys.stderr.write(f"⚠️  Błąd odczytu {filename}: {e}\n")
             continue
 
-        # Wymagamy tylko pola Package, reszta może być pusta
         if not pkg.package or pkg.package.strip() == "":
             sys.stderr.write(f"⚠️  Pomijam plik '{filename}' — brak pola Package.\n")
             continue
 
         pkg_list.append(pkg)
 
-    # Sortowanie po nazwie pakietu (case-insensitive)
     pkg_list.sort(key=lambda p: p.package.lower())
 
-    # Wypisanie zawartości indexu
     for pkg in pkg_list:
-        sys.stdout.write(pkg.make_index_entry())
-        sys.stdout.write("\n")  # pusty wiersz między pakietami
+        entry = pkg.make_index_entry()
+        if not entry.endswith("\n"):
+            entry += "\n"
+        sys.stdout.write(entry + "\n")
 
 def main():
     if len(sys.argv) != 2:
