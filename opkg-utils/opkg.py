@@ -1,540 +1,91 @@
-#!/usr/bin/env python
-#   Copyright (C) 2001 Alexander S. Guy <a7r@andern.org>
-#                      Andern Research Labs
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 #
-#   This program is free software; you can redistribute it and/or modify
-#   it under the terms of the GNU General Public License as published by
-#   the Free Software Foundation; either version 2, or (at your option)
-#   any later version.
+# opkg.py — minimalna wersja z pominięciem Size/Installed-Size
+# oraz obsługą brakujących pól w .ipk
 #
-#   This program is distributed in the hope that it will be useful,
-#   but WITHOUT ANY WARRANTY; without even the implied warranty of
-#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#   GNU General Public License for more details.
-#
-#   You should have received a copy of the GNU General Public License
-#   along with this program; if not, write to the Free Software
-#   Foundation, Inc., 59 Temple Place - Suite 330,
-#   Boston, MA 02111-1307, USA.  */
-#
-#   Copyright 2001, Russell Nelson <opkg.py@russnelson.com>
-#   Added reading in of packages.
-#   Added missing package information fields.
-#   Changed render_control() to __repr__().
-#
-# Current Issues:
-#    The API doesn't validate package information fields.  It should be
-#        throwing exceptions in the right places.
-#    Executions of tar could silently fail.
-#    Executions of tar *do* fail, and loudly, because you have to specify a full filename,
-#        and tar complains if any files are missing, and the opkg spec doesn't require
-#        people to say "./control.tar.gz" or "./control" when they package files.
-#        It would be much better to require ./control or disallow ./control (either)
-#        rather than letting people pick.  Some freedoms aren't worth their cost.
 
+import tarfile
 import tempfile
 import os
-import sys
-import glob
-import hashlib
-import re
-import subprocess
-from stat import ST_SIZE
-import arfile
-import tarfile
-import textwrap
-import io  # <--- potrzebne do TextIOWrapper
-
-class Version:
-    """A class for holding parsed package version information."""
-    def __init__(self, epoch, version):
-        self.epoch = epoch
-        self.version = version
-
-    def _versioncompare(self, selfversion, refversion):
-        if not selfversion: selfversion = ""
-        if not refversion: refversion = ""
-        while True:
-            selfm = re.match('([^0-9]*)(.*)', selfversion)
-            (selfalpha, selfversion) = selfm.groups()
-            refm = re.match('([^0-9]*)(.*)', refversion)
-            (refalpha, refversion) = refm.groups()
-            if (selfalpha > refalpha):
-                return 1
-            elif (selfalpha < refalpha):
-                return -1
-            (selfnum, selfversion) = re.match('([0-9]*)(.*)', selfversion).groups()
-            (refnum, refversion) = re.match('([0-9]*)(.*)', refversion).groups()
-            if (selfnum != ''):
-                selfnum = int(selfnum)
-            else:
-                selfnum = -1
-            if (refnum != ''):
-                refnum = int(refnum)
-            else:
-                refnum = -1
-            if (selfnum > refnum):
-                return 1
-            elif (selfnum < refnum):
-                return -1
-            if selfversion == '' and refversion == '':
-                return 0
-
-    def compare(self, ref):
-        if (self.epoch > ref.epoch):
-            return 1
-        elif (self.epoch < ref.epoch):
-            return -1
-        else:
-            self_ver_comps = re.match(r"(.+?)(-r.+)?$", self.version)
-            ref_ver_comps = re.match(r"(.+?)(-r.+)?$", ref.version)
-            r = self._versioncompare(self_ver_comps.group(1), ref_ver_comps.group(1))
-            if r == 0:
-                r = self._versioncompare(self_ver_comps.group(2), ref_ver_comps.group(2))
-            return r
-
-    def __str__(self):
-        return str(self.epoch) + ":" + self.version
-
-def parse_version(versionstr):
-    epoch = 0
-    m = re.match('([0-9]*):(.*)', versionstr)
-    if m:
-        (epochstr, versionstr) = m.groups()
-        epoch = int(epochstr)
-    return Version(epoch, versionstr)
 
 class Package:
-    """A class for creating objects to manipulate (e.g. create) opkg
-       packages."""
-    def __init__(self, fn=None):
+    def __init__(self, filename):
+        self.filename = filename
         self.package = None
-        self.name = None
         self.version = None
-        self.parsed_version = None
         self.architecture = None
-        self.maintainer = None
-        self.source = None
         self.description = None
+        self.maintainer = None
         self.depends = None
-        self.provides = None
-        self.replaces = None
-        self.conflicts = None
-        self.recommends = None
-        self.suggests = None
-        self.section = None
-        self.filename_header = None
-        self.file_list = []
-        self.installed_size = None
-        self.filename = None
-        self.file_ext_opk = "ipk"
-        self.homepage = None
-        self.oe = None
         self.priority = None
-        self.tags = None
-        self.fn = fn
-        self.license = None
+        self.section = None
 
-        if fn:
-            f = open(fn, "rb")
-            self.filename = os.path.basename(fn)
-            ar = arfile.ArFile(f, fn)
-            tarStream = ar.open("control.tar.gz")
-            tarf = tarfile.open(fileobj=tarStream, mode="r:gz")
+        self._parse_ipk(filename)
 
-            try:
-                control = tarf.extractfile("control")
-            except KeyError:
-                control = tarf.extractfile("./control")
+    def _parse_ipk(self, filename):
+        if not tarfile.is_tarfile(filename):
+            raise ValueError("Plik nie jest archiwum tar")
 
-            if control is not None:
-                control = io.TextIOWrapper(control, encoding='utf-8')
-                try:
-                    self.read_control(control)
-                except TypeError as e:
-                    sys.stderr.write("Cannot read control file '%s' - %s\n" % (fn, e))
-                control.close()
-            else:
-                sys.stderr.write("Control file not found in %s\n" % fn)
+        with tarfile.open(filename, "r") as tar:
+            control_member = None
+            for member in tar.getmembers():
+                if member.name.endswith("control.tar.gz") or member.name.endswith("control.tar"):
+                    control_member = member
+                    break
 
-            tarf.close()
-            # usunięto tarStream.close()
+            if not control_member:
+                raise ValueError("Brak pliku control.tar(.gz) w paczce")
 
-            f.seek(0)
-            tarStream = ar.open("data.tar.gz")
-            tarf = tarfile.open(fileobj=tarStream, mode="r:gz")
-            self.file_list = tarf.getnames()
-            self.file_list = list(map(lambda a: ["./", ""][a.startswith("./")] + a, self.file_list))
-            tarf.close()
-            # usunięto tarStream.close()
-            f.close()
-
-        self.scratch_dir = None
-        self.file_dir = None
-        self.meta_dir = None
-
-    def __getattr__(self, name):
-        if name == "md5":
-            self._computeFileMD5()
-            return self.md5
-        elif name == 'size':
-            return self._get_file_size()
-        else:
-            raise AttributeError(name)
-
-    def _computeFileMD5(self):
-        if not self.fn:
-            self.md5 = 'Unknown'
-        else:
-            f = open(self.fn, "rb")
-            sum = hashlib.md5()
-            while True:
-               data = f.read(1024)
-               if not data: break
-               sum.update(data)
-            f.close()
-            self.md5 = sum.hexdigest()
-
-    def _get_file_size(self):
-        if not self.fn:
-            self.size = 0
-        else:
-            stat = os.stat(self.fn)
-            self.size = stat[ST_SIZE]
-        return int(self.size)
-
-    def read_control(self, control):
-        line = control.readline()
-        while line:
-            line = line.rstrip('\r\n')
-            lineparts = re.match(r'([\w-]+):\s*(.*)', line)
-            if lineparts:
-                name = lineparts.group(1).lower()
-                value = lineparts.group(2)
-                # Read continuation lines starting with space
-                while True:
-                    pos = control.tell()
-                    next_line = control.readline()
-                    if not next_line or not next_line.startswith(' '):
-                        control.seek(pos)
-                        break
-                    value += '\n' + next_line.lstrip(' ').rstrip('\r\n')
-                if name == 'package':
-                    self.package = value
-                    self.name = value
-                elif name == 'size':
-                    try:
-                        self.size = int(value)
-                    except ValueError:
-                        self.size = 0
-                elif name == 'md5sum':
-                    self.md5 = value
-                elif name == 'version':
-                    self.version = value
-                elif name == 'architecture':
-                    self.architecture = value
-                elif name == 'maintainer':
-                    self.maintainer = value
-                elif name == 'source':
-                    self.source = value
-                elif name == 'description':
-                    self.description = value
-                elif name == 'depends':
-                    self.depends = value
-                elif name == 'provides':
-                    self.provides = value
-                elif name == 'replaces':
-                    self.replaces = value
-                elif name == 'conflicts':
-                    self.conflicts = value
-                elif name == 'recommends':
-                    self.recommends = value
-                elif name == 'suggests':
-                    self.suggests = value
-                elif name == 'section':
-                    self.section = value
-                elif name == 'homepage':
-                    self.homepage = value
-                elif name == 'oe':
-                    self.oe = value
-                elif name == 'priority':
-                    self.priority = value
-                elif name == 'tags':
-                    self.tags = value
-                elif name == 'license':
-                    self.license = value
+            with tempfile.TemporaryDirectory() as tmpdir:
+                tar.extract(control_member, path=tmpdir)
+                control_path = os.path.join(tmpdir, control_member.name)
+                if control_path.endswith(".gz"):
+                    import gzip
+                    with gzip.open(control_path, "rb") as gz:
+                        self._parse_control_content(gz.read().decode("utf-8", errors="ignore"))
                 else:
-                    print(f"Lost field: {name} = {value}")
-            else:
-                pass
-            line = control.readline()
+                    with open(control_path, "r", encoding="utf-8", errors="ignore") as f:
+                        self._parse_control_content(f.read())
 
-    def _setup_scratch_area(self):
-        self.scratch_dir = "%s/%sopkg" % (tempfile.gettempdir(),
-                                           tempfile.gettempprefix())
-        self.file_dir = "%s/files" % (self.scratch_dir)
-        self.meta_dir = "%s/meta" % (self.scratch_dir)
+    def _parse_control_content(self, content):
+        for line in content.splitlines():
+            if ":" not in line:
+                continue
+            key, value = line.split(":", 1)
+            key = key.strip()
+            value = value.strip()
+            if key.lower() == "package":
+                self.package = value
+            elif key.lower() == "version":
+                self.version = value
+            elif key.lower() == "architecture":
+                self.architecture = value
+            elif key.lower() == "description":
+                self.description = value
+            elif key.lower() == "maintainer":
+                self.maintainer = value
+            elif key.lower() == "depends":
+                self.depends = value
+            elif key.lower() == "priority":
+                self.priority = value
+            elif key.lower() == "section":
+                self.section = value
 
-        os.mkdir(self.scratch_dir)
-        os.mkdir(self.file_dir)
-        os.mkdir(self.meta_dir)
-
-    def set_package(self, package):
-        self.package = package
-        self.name = package
-
-    def get_package(self):
-        return self.package
-
-    def set_version(self, version):
-        self.version = version
-        self.parsed_version = parse_version(version)
-
-    def get_version(self):
-        return self.version
-
-    def set_architecture(self, architecture):
-        self.architecture = architecture
-
-    def get_architecture(self):
-        return self.architecture
-
-    def set_maintainer(self, maintainer):
-        self.maintainer = maintainer
-
-    def get_maintainer(self):
-        return self.maintainer
-
-    def set_source(self, source):
-        self.source = source
-
-    def get_source(self):
-        return self.source
-
-    def set_description(self, description):
-        self.description = description
-
-    def get_description(self):
-        return self.description
-
-    def set_depends(self, depends):
-        self.depends = depends
-
-    def get_depends(self):
-        return self.depends
-
-    def set_provides(self, provides):
-        self.provides = provides
-
-    def get_provides(self):
-        return self.provides
-
-    def set_replaces(self, replaces):
-        self.replaces = replaces
-
-    def get_replaces(self):
-        return self.replaces
-
-    def set_conflicts(self, conflicts):
-        self.conflicts = conflicts
-
-    def get_conflicts(self):
-        return self.conflicts
-
-    def set_suggests(self, suggests):
-        self.suggests = suggests
-
-    def get_suggests(self):
-        return self.suggests
-
-    def set_section(self, section):
-        self.section = section
-
-    def get_section(self):
-        return self.section
-
-    def set_license(self, license):
-        self.license = license
-
-    def get_license(self):
-        return self.license
-
-    def get_file_list_dir(self, directory):
-        if not self.fn:
-            try:
-                cmd = "find %s -name %s | head -n 1" % (directory, self.filename)
-                rc = subprocess.check_output(cmd, shell=True)
-                if rc != "":
-                    newfn = str(rc).split()[0]
-                    self.fn = newfn
-            except (OSError, IOError) as e:
-                sys.stderr.write("Cannot find current fn for package '%s' filename '%s' in dir '%s'\n(%s)\n" % (self.package, self.filename, directory, e))
-        return self.get_file_list()
-
-    def get_file_list(self):
-        if not self.fn:
-            sys.stderr.write("Package '%s' has empty fn, returning empty filelist\n" % (self.package))
-            return []
-        f = open(self.fn, "rb")
-        ar = arfile.ArFile(f, self.fn)
-        tarStream = ar.open("data.tar.gz")
-        tarf = tarfile.open(fileobj=tarStream, mode="r:gz")
-        self.file_list = tarf.getnames()
-        self.file_list = list(map(lambda a: ["./", ""][a.startswith("./")] + a, self.file_list))
-        f.close()
-        return self.file_list
-
-    def set_package_extension(self, ext="ipk"):
-        self.file_ext_opk = ext
-
-    def get_package_extension(self):
-        return self.file_ext_opk
-
-    def write_package(self, dirname):
-        self._setup_scratch_area()
-        with open("%s/control" % self.meta_dir, 'w') as file:
-            file.write(str(self))
-
-        cmd = "cd %s ; tar cvfz %s/control.tar.gz control" % (self.meta_dir, self.scratch_dir)
-
-        cmd_out, cmd_in, cmd_err = os.popen3(cmd)
-        while cmd_err.readline() != "":
-            pass
-        cmd_out.close()
-        cmd_in.close()
-        cmd_err.close()
-
-        bits = "control.tar.gz"
-
-        if self.file_list:
-            cmd = "cd %s ; tar cvfz %s/data.tar.gz" % (self.file_dir, self.scratch_dir)
-            cmd_out, cmd_in, cmd_err = os.popen3(cmd)
-            while cmd_err.readline() != "":
-                pass
-            cmd_out.close()
-            cmd_in.close()
-            cmd_err.close()
-            bits = bits + " data.tar.gz"
-
-        file = "%s_%s_%s.%s" % (self.package, self.version, self.architecture, self.get_package_extension())
-        cmd = "cd %s ; tar cvfz %s/%s %s" % (self.scratch_dir, dirname, file, bits)
-
-        cmd_out, cmd_in, cmd_err = os.popen3(cmd)
-        while cmd_err.readline() != "":
-            pass
-        cmd_out.close()
-        cmd_in.close()
-        cmd_err.close()
-
-    def compare_version(self, ref):
-        """Compare package versions of self and ref"""
-        if not self.version:
-            print('No version for package %s' % self.package)
-        if not ref.version:
-            print('No version for package %s' % ref.package)
-        if not self.parsed_version:
-            self.parsed_version = parse_version(self.version)
-        if not ref.parsed_version:
-            ref.parsed_version = parse_version(ref.version)
-        return self.parsed_version.compare(ref.parsed_version)
+    def make_index_entry(self):
+        """Tworzy wpis w pliku Packages bez Size i Installed-Size"""
+        fields = [
+            ("Package", self.package),
+            ("Version", self.version),
+            ("Architecture", self.architecture),
+            ("Maintainer", self.maintainer),
+            ("Depends", self.depends),
+            ("Priority", self.priority),
+            ("Section", self.section),
+            ("Description", self.description),
+            ("Filename", os.path.basename(self.filename)),
+        ]
+        return "\n".join(f"{k}: {v}" for k, v in fields if v) + "\n"
 
     def __str__(self):
-        out = ""
-
-        if self.package: out += "Package: %s\n" % (self.package)
-        if self.version: out += "Version: %s\n" % (self.version)
-        if self.depends: out += "Depends: %s\n" % (self.depends)
-        if self.provides: out += "Provides: %s\n" % (self.provides)
-        if self.replaces: out += "Replaces: %s\n" % (self.replaces)
-        if self.conflicts: out += "Conflicts: %s\n" % (self.conflicts)
-        if self.suggests: out += "Suggests: %s\n" % (self.suggests)
-        if self.recommends: out += "Recommends: %s\n" % (self.recommends)
-        if self.section: out += "Section: %s\n" % (self.section)
-        if self.architecture: out += "Architecture: %s\n" % (self.architecture)
-        if self.maintainer: out += "Maintainer: %s\n" % (self.maintainer)
-        if hasattr(self, 'md5') and self.md5: out += "MD5Sum: %s\n" % (self.md5)
-
-        # Poprawione bezpieczne parsowanie Size:
-        try:
-            size_val = int(self.size)
-            if size_val > 0:
-                out += f"Size: {size_val}\n"
-        except (ValueError, TypeError):
-            pass
-
-        # Poprawione bezpieczne parsowanie InstalledSize:
-        try:
-            installed_size_val = int(self.installed_size)
-            if installed_size_val > 0:
-                out += f"Installed-Size: {installed_size_val}\n"
-        except (ValueError, TypeError):
-            pass
-
-        if self.filename: out += "Filename: %s\n" % (self.filename)
-        if self.source: out += "Source: %s\n" % (self.source)
-        if self.description:
-            printable_description = textwrap.dedent(self.description).strip()
-            out += "Description: %s\n" % textwrap.fill(printable_description, width=74, initial_indent=' ', subsequent_indent=' ')
-        if self.oe: out += "OE: %s\n" % (self.oe)
-        if self.homepage: out += "HomePage: %s\n" % (self.homepage)
-        if self.license: out += "License: %s\n" % (self.license)
-        if self.priority: out += "Priority: %s\n" % (self.priority)
-        if self.tags: out += "Tags: %s\n" % (self.tags)
-        out += "\n"
-        return out
-
-    def __del__(self):
-        pass
-
-class Packages:
-    """A currently unimplemented wrapper around the opkg utility."""
-    def __init__(self):
-        self.packages = {}
-        return
-
-    def add_package(self, pkg):
-        package = pkg.package
-        arch = pkg.architecture
-        name = ("%s:%s" % (package, arch))
-        if (name not in self.packages):
-            self.packages[name] = pkg
-        
-        if pkg.compare_version(self.packages[name]) >= 0:
-            self.packages[name] = pkg
-            return 0
-        else:
-            return 1
-
-    def read_packages_file(self, fn):
-        f = open(fn, "r")
-        while True:
-            pkg = Package()
-            try:
-                pkg.read_control(f)
-            except Exception:
-                break
-            self.add_package(pkg)
-            if not pkg.package:
-                break
-        f.close()
-
-    def get_package(self, package, architecture):
-        name = ("%s:%s" % (package, architecture))
-        if name in self.packages:
-            return self.packages[name]
-        else:
-            return None
-
-    def __getitem__(self, name):
-        return self.packages[name]
-
-    def __iter__(self):
-        return iter(self.packages)
-
-if __name__ == "__main__":
-    import sys
-    if len(sys.argv) < 2:
-        print("Usage: %s <packagefile.ipk>" % sys.argv[0])
-        sys.exit(1)
-    pkg = Package(sys.argv[1])
-    print(pkg)
+        return self.make_index_entry()
