@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <title>Repozytorium OPKG - Azman</title>
+  <style>body { font-family: sans-serif; line-height: 1.6; max-width: 800px; margin: 2em auto; padding: 0 1em; } pre { background-color: #f4f4f4; padding: 1em; border: 1px solid #ddd; border-radius: 5px; } code { font-family: monospace; } a { color: #007bff; text-decoration: none; } a:hover { text-decoration: underline; }</style>
+</head>
+<body>
+  <h1>📦 Repozytorium OPKG dla Enigma2</h1>
+  <p>Połącz się z tunerem i wykonaj poniższą komendę w terminalu:</p>
+  <pre><code>echo "src/gz azman-feed-all https://azman26.github.io/azman-enigma2-repo/all" > /etc/opkg/azman-feed.conf</code></pre>
+  <p style="text-align: center; margin: 20px 0; font-weight: bold;">lub</p>
+  <p>Pobierz plik <a href="azman-feed.conf" download><strong>azman-feed.conf</strong></a>, a następnie wrzuć go za pomocą klienta FTP do katalogu <code>/etc/opkg/</code> na swoim dekoderze.</p>
+  <hr style="margin: 2em 0;">
+  <p>Po dodaniu repozytorium jedną z powyższych metod, wykonaj w terminalu:</p>
+  <pre><code># Zaktualizuj listę pakietów
+opkg update
+
+# Zainstaluj wybrany pakiet (np. AzmanPanel)
+opkg install enigma2-plugin-extensions-AzmanPanel
+</code></pre>
+  <h2>Dostępne architektury i pakiety w repozytorium</h2>
+  <ul>
+    <li><a href="all/">all/</a> – pakiety niezależne od architektury (skórki, picony, wtyczki python)</li>
+  </ul>
+  <p style="text-align: center; margin-top: 2em; color: #555;">Repozytorium przygotowane przez <strong>azman</strong>.</p>
+</body>
+</html>

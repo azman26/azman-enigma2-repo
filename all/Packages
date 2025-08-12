@@ -1,0 +1,110 @@
+Package: e2kodi-addon-artetvpl_azman
+Version: 1.0.0
+Depends: enigma2-plugin-extensions--j00zeks-e2kodi
+Description: Dodatek ArteTvPL do e2Kodi
+Architecture: all
+Section: utils
+Priority: optional
+Maintainer: azman
+License: GPL-2.0-or-later
+Filename: e2kodi-addon-artetvpl_azman_1.0.0_all.ipk
+Size: 93998
+MD5Sum: 90ad9d97482e6eae3609b41aad987473
+SHA256Sum: 9b283b4a827c0bd0e3687b04d48cf02b58f00c74f5904c209a7d1b1e8de2b7f0
+
+Package: e2kodi-addon-dokumentalnenet_azman
+Version: 1.0.0
+Depends: enigma2-plugin-extensions--j00zeks-e2kodi
+Description: Dodatek DoumentalneNet do e2Kodi
+Architecture: all
+Section: utils
+Priority: optional
+Maintainer: azman
+License: GPL-2.0-or-later
+Filename: e2kodi-addon-dokumentalnenet_azman_1.0.0_all.ipk
+Size: 1148008
+MD5Sum: bd668326b504f304e4bd3593fd3e084a
+SHA256Sum: b0cf9e514f5267b39dc1af7cd81bc5de16c9bf1bafd9225a847e7ea1442640d0
+
+Package: e2kodi-addon-onet_azman
+Version: 1.0.8
+Depends: enigma2-plugin-extensions--j00zeks-e2kodi
+Description: Dodatek Onet do e2Kodi
+Architecture: all
+Section: utils
+Priority: optional
+Maintainer: lg,azman
+License: GPL-2.0-or-later
+Filename: e2kodi-addon-onet_azman_1.0.8_all.ipk
+Size: 239774
+MD5Sum: 2085152244f8b5f97edfb548756c30a4
+SHA256Sum: 24fe612afce2cab9da2b5bd492284b5d08f3c0ac2d63d8aca563df79519f4e9a
+
+Package: e2kodi-addon-telewizjaonline_azman
+Version: 1.0.0
+Depends: enigma2-plugin-extensions--j00zeks-e2kodi
+Description: Dodatek Telewizja Online do e2Kodi
+Architecture: all
+Section: utils
+Priority: optional
+Maintainer: azman
+License: GPL-2.0-or-later
+Filename: e2kodi-addon-telewizjaonline_azman_1.0.0_all.ipk
+Size: 1147156
+MD5Sum: b69b491d3dd59fe606a3d1637b553dd0
+SHA256Sum: 43f94ab3e87376b986f0c2a7e2df809c2867b9bb65bf3163fcdfcd10e606399a
+
+Package: e2kodi-addon-wp_azman
+Version: 1.0.8
+Depends: enigma2-plugin-extensions--j00zeks-e2kodi
+Description: Dodatek WP do e2Kodi
+Architecture: all
+Section: utils
+Priority: optional
+Maintainer: lg,azman
+License: GPL-2.0-or-later
+Filename: e2kodi-addon-wp_azman_1.0.8_all.ipk
+Size: 238500
+MD5Sum: b466b6db3c44a9282f99f36623cee5ec
+SHA256Sum: 25cf8dac4c22c6eaee0731e6c4688a7997ddb79371acffe93cc37a693ff30514
+
+Package: enigma2-plugin-extensions-AzmanPanel
+Version: 1.0.3
+Description: Downloading IPTV bouquets, EPG sources, Picons and E2K skins
+Architecture: all
+Section: extensions
+Priority: optional
+Maintainer: azman
+License: GPL-2.0-or-later
+Filename: enigma2-plugin-extensions-AzmanPanel_1.0.3_all.ipk
+Size: 57996
+MD5Sum: 7ee3b787b48d415b5b8623b0ff009c07
+SHA256Sum: ef0762eb9beb649fc1753261a27b26bdfc6ffa911aed65db56affad4d4a1977b
+
+Package: enigma2-plugin-extensions-StacjaMeteoMMz
+Version: 1.0.0
+Description: Plugin wyświetlający lokalną pogodę ze stacji meteo MMz
+Architecture: all
+Section: utils
+Priority: optional
+Maintainer: azman
+License: GPL-2.0-or-later
+Filename: enigma2-plugin-extensions-StacjaMeteoMMz_1.0.0_all.ipk
+Size: 9922
+MD5Sum: 802843d6df6c3c31bd326e6179098897
+SHA256Sum: 18de4e560198045a3d1d5508e6712b101e82db6cde7ed09d207e1a880d079b5d
+
+Package: enigma2-skinpacks-e2kodi-MetrixHD_azman
+Version: 0.2
+Depends: enigma2-plugin-extensions--j00zeks-e2kodi
+Description: Skin for E2Kodi
+Architecture: all
+Section: utils
+Priority: optional
+Maintainer: azman
+License: GPL-2.0-or-later
+Filename: enigma2-skinpacks-e2kodi-MetrixHD_azman_0.2_all.ipk
+Size: 571382
+MD5Sum: 187e415e4b7b96963881a51e3b0443e9
+SHA256Sum: 3d096b047d5eba4f996f7cde07bd5c0485c42e78cd1bb0d70c5439738fd72cd0
+

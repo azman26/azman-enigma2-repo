@@ -1,0 +1,23 @@
+# Pliki tymczasowe edytorów
+*.swp
+*.bak
+*.tmp
+
+# Pliki systemowe Windows i Mac
+.DS_Store
+Thumbs.db
+ehthumbs.db
+desktop.ini
+._*
+
+# Logi
+*.log
+
+# Cache Pythona
+__pycache__/
+*.pyc
+*.pyo
+
+# Nie ignoruj pakietów i indeksów
+!*.ipk
+

@@ -1,0 +1,47 @@
+#!/bin/bash
+#
+# opkg-make-index - generuje kompletny plik Packages dla repozytorium .ipk
+# inspirowany oficjalnymi skryptami opkg-utils.
+#
+set -e  # Przerwij skrypt w przypadku błędu
+
+# Sprawdzenie, czy podano katalog
+if [ -z "$1" ] || [ ! -d "$1" ]; then
+    echo "Użycie: $0 <katalog_z_ipk>" >&2
+    exit 1
+fi
+
+PACKAGE_DIR=$1
+
+# Przejdź przez każdy plik .ipk w katalogu
+for ipk_file in "$PACKAGE_DIR"/*.ipk; do
+    # Sprawdź, czy plik istnieje, aby uniknąć błędów, gdy katalog jest pusty
+    [ -e "$ipk_file" ] || continue
+
+    echo "⚙️  Processing: $(basename "$ipk_file")" >&2
+
+    # Wyciągnij informacje z pliku control wewnątrz pakietu
+    # Używamy potoku: ar -> tar, aby zrobić to w pamięci bez rozpakowywania
+    CONTROL_DATA=$(ar p "$ipk_file" control.tar.gz | tar -xzO ./control 2>/dev/null)
+    
+    if [ -z "$CONTROL_DATA" ]; then
+        echo "❌ Błąd: Nie można wyodrębnić pliku 'control' z $(basename "$ipk_file")" >&2
+        continue # Pomiń uszkodzony plik
+    fi
+    
+    # Wypisz oryginalne dane z pliku control
+    echo "$CONTROL_DATA"
+
+    # Oblicz i dodaj pola, których brakuje w pliku control
+    SIZE=$(stat -c%s "$ipk_file")
+    MD5SUM=$(md5sum "$ipk_file" | cut -d' ' -f1)
+    SHA256SUM=$(sha256sum "$ipk_file" | cut -d' ' -f1)
+
+    echo "Filename: $(basename "$ipk_file")"
+    echo "Size: $SIZE"
+    echo "MD5Sum: $MD5SUM"
+    echo "SHA256Sum: $SHA256SUM"
+    
+    # Pusta linia oddzielająca wpisy
+    echo ""
+done
