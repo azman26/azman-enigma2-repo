@@ -28,25 +28,29 @@ class Package:
             # KROK 1: Używamy biblioteki `arpy` do otwarcia zewnętrznego kontenera .ipk
             with arpy.Archive(filename) as archive:
                 control_data = None
-                # Szukamy pliku `control.tar.gz` wewnątrz archiwum `ar`
+                
+                # --- POCZĄTEK KLUCZOWEJ POPRAWKI ---
+                # Zmieniamy sposób wyszukiwania pliku. Zamiast `startswith`, używamy `in`,
+                # co jest bardziej elastyczne i znajdzie plik nawet jeśli jego nazwa
+                # to np. './control.tar.gz'.
                 for header in archive.headers:
-                    if header.name.decode().startswith('control.tar.gz'):
+                    if 'control.tar.gz' in header.name.decode():
                         control_data = archive.read(header)
                         break
+                # --- KONIEC KLUCZOWEJ POPRAWKI ---
 
                 if not control_data:
-                    raise ValueError("Brak pliku control.tar.gz w paczce .ipk")
+                    # Jeśli nadal nie znaleziono, wypiszmy nazwy plików, które tam są, dla diagnostyki
+                    found_files = [h.name.decode() for h in archive.headers]
+                    raise ValueError(f"Brak pliku 'control.tar.gz' w paczce. Znaleziono: {found_files}")
 
                 # KROK 2: Tworzymy obiekt plikopodobny w pamięci z danych `control.tar.gz`
-                # To pozwala `tarfile` pracować bez zapisywania plików na dysku.
                 control_fileobj = io.BytesIO(control_data)
 
                 # KROK 3: Używamy `tarfile` do przetworzenia archiwum `control.tar.gz` z pamięci.
-                # 'r:gz' mówi tarfile, że dane są skompresowane za pomocą gzip.
                 with tarfile.open(fileobj=control_fileobj, mode="r:gz") as control_tar:
                     control_file_member = None
                     for member in control_tar.getmembers():
-                        # Plik 'control' może być w podkatalogu, np. './control'
                         if member.name.endswith("control"):
                             control_file_member = member
                             break
@@ -62,8 +66,6 @@ class Package:
                         raise ValueError("Nie można wyodrębnić pliku 'control'")
 
         except Exception as e:
-            # Przechwytujemy wszystkie możliwe błędy (z arpy i tarfile) i rzucamy je dalej
-            # z czytelnym komunikatem.
             raise ValueError(f"Błąd podczas parsowania pliku .ipk: {e}")
 
     def _parse_control_content(self, content):
@@ -103,7 +105,6 @@ class Package:
             ("Description", self.description),
             ("Filename", os.path.basename(self.filename)),
         ]
-        # Tworzy wpis tylko z polami, które mają wartość
         return "\n".join(f"{k}: {v}" for k, v in fields if v) + "\n"
 
     def __str__(self):
