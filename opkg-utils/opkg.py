@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# opkg.py — minimalna wersja z pominięciem Size/Installed-Size
-# oraz obsługą brakujących pól w .ipk
+# opkg.py — poprawiona wersja
+# Obsługuje .ipk niezależnie od struktury archiwum,
+# pomija Size/Installed-Size, nie wywala błędów na brakujących polach.
 #
 
 import tarfile
 import tempfile
 import os
+import gzip
 
 class Package:
     def __init__(self, filename):
@@ -40,13 +42,31 @@ class Package:
             with tempfile.TemporaryDirectory() as tmpdir:
                 tar.extract(control_member, path=tmpdir)
                 control_path = os.path.join(tmpdir, control_member.name)
+
+                # Jeżeli to gzip — rozpakuj
                 if control_path.endswith(".gz"):
-                    import gzip
+                    inner_tmp = os.path.join(tmpdir, "control_inner")
+                    os.makedirs(inner_tmp, exist_ok=True)
                     with gzip.open(control_path, "rb") as gz:
-                        self._parse_control_content(gz.read().decode("utf-8", errors="ignore"))
+                        with open(os.path.join(inner_tmp, "control.tar"), "wb") as f:
+                            f.write(gz.read())
+                    control_path = os.path.join(inner_tmp, "control.tar")
+
+                # Teraz rozpakuj control.tar i znajdź plik "control"
+                if tarfile.is_tarfile(control_path):
+                    with tarfile.open(control_path, "r") as control_tar:
+                        control_file = None
+                        for member in control_tar.getmembers():
+                            if member.name == "control":
+                                control_file = member
+                                break
+                        if not control_file:
+                            raise ValueError("Brak pliku 'control' w control.tar")
+
+                        control_content = control_tar.extractfile(control_file).read().decode("utf-8", errors="ignore")
+                        self._parse_control_content(control_content)
                 else:
-                    with open(control_path, "r", encoding="utf-8", errors="ignore") as f:
-                        self._parse_control_content(f.read())
+                    raise ValueError("control.tar(.gz) nie jest prawidłowym archiwum")
 
     def _parse_control_content(self, content):
         for line in content.splitlines():
