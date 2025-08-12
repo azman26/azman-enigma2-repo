@@ -1,40 +1,47 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+#!/bin/bash
 #
-# opkg-make-index — generuje plik Packages dla repozytorium .ipk
-# korzysta z opkg.py, pomija Size i Installed-Size
+# opkg-make-index - generuje kompletny plik Packages dla repozytorium .ipk
+# inspirowany oficjalnymi skryptami opkg-utils.
 #
+set -e  # Przerwij skrypt w przypadku błędu
 
-import sys
-import os
-from opkg import Package
+# Sprawdzenie, czy podano katalog
+if [ -z "$1" ] || [ ! -d "$1" ]; then
+    echo "Użycie: $0 <katalog_z_ipk>" >&2
+    exit 1
+fi
 
-def make_index(directory):
-    index_entries = []
-    for fname in sorted(os.listdir(directory)):
-        if not fname.endswith(".ipk"):
-            continue
-        path = os.path.join(directory, fname)
-        try:
-            pkg = Package(path)
-            entry = pkg.make_index_entry()
-            index_entries.append(entry)
-        except Exception as e:
-            print(f"⚠️  Błąd przy przetwarzaniu {fname}: {e}", file=sys.stderr)
-    return "\n".join(index_entries)
+PACKAGE_DIR=$1
 
-def main():
-    if len(sys.argv) != 2:
-        print(f"Użycie: {sys.argv[0]} <katalog_z_ipk>", file=sys.stderr)
-        sys.exit(1)
+# Przejdź przez każdy plik .ipk w katalogu
+for ipk_file in "$PACKAGE_DIR"/*.ipk; do
+    # Sprawdź, czy plik istnieje, aby uniknąć błędów, gdy katalog jest pusty
+    [ -e "$ipk_file" ] || continue
 
-    directory = sys.argv[1]
-    if not os.path.isdir(directory):
-        print(f"❌ {directory} nie jest katalogiem", file=sys.stderr)
-        sys.exit(1)
+    echo "⚙️  Processing: $(basename "$ipk_file")" >&2
 
-    index_content = make_index(directory)
-    sys.stdout.write(index_content)
+    # Wyciągnij informacje z pliku control wewnątrz pakietu
+    # Używamy potoku: ar -> tar, aby zrobić to w pamięci bez rozpakowywania
+    CONTROL_DATA=$(ar p "$ipk_file" control.tar.gz | tar -xzO ./control 2>/dev/null)
+    
+    if [ -z "$CONTROL_DATA" ]; then
+        echo "❌ Błąd: Nie można wyodrębnić pliku 'control' z $(basename "$ipk_file")" >&2
+        continue # Pomiń uszkodzony plik
+    fi
+    
+    # Wypisz oryginalne dane z pliku control
+    echo "$CONTROL_DATA"
 
-if __name__ == "__main__":
-    main()
+    # Oblicz i dodaj pola, których brakuje w pliku control
+    SIZE=$(stat -c%s "$ipk_file")
+    MD5SUM=$(md5sum "$ipk_file" | cut -d' ' -f1)
+    SHA256SUM=$(sha256sum "$ipk_file" | cut -d' ' -f1)
+
+    echo "Filename: $(basename "$ipk_file")"
+    echo "Size: $SIZE"
+    echo "MD5Sum: $MD5SUM"
+    echo "SHA256Sum: $SHA256SUM"
+    
+    # Pusta linia oddzielająca wpisy
+    echo ""
+done
