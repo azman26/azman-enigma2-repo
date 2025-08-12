@@ -1,15 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 #
-# opkg.py — poprawiona wersja
-# Obsługuje .ipk niezależnie od struktury archiwum,
-# pomija Size/Installed-Size, nie wywala błędów na brakujących polach.
+# opkg.py — finalna, poprawiona wersja z prawidłową obsługą formatu `ar`
 #
 
 import tarfile
-import tempfile
 import os
-import gzip
+import arpy  # Nowa, wymagana biblioteka
+import io    # Wymagane do obsługi danych w pamięci
 
 class Package:
     def __init__(self, filename):
@@ -26,65 +24,47 @@ class Package:
         self._parse_ipk(filename)
 
     def _parse_ipk(self, filename):
-        # --------------------------------------------------------------------------
-        # TUTAJ USUNIĘTO BŁĘDNĄ LINIĘ.
-        # Sprawdzenie `if not tarfile.is_tarfile(filename):` było niepoprawne,
-        # ponieważ plik .ipk jest kontenerem 'ar', a nie 'tar'.
-        # Prawdziwa obsługa błędu nastąpi w bloku `with` poniżej, jeśli
-        # plik będzie rzeczywiście uszkodzony.
-        # --------------------------------------------------------------------------
-
         try:
-            with tarfile.open(filename, "r") as tar:
-                control_member = None
-                for member in tar.getmembers():
-                    # Szukamy zarówno wersji skompresowanej, jak i nie
-                    if member.name.endswith("control.tar.gz") or member.name.endswith("control.tar"):
-                        control_member = member
+            # KROK 1: Używamy biblioteki `arpy` do otwarcia zewnętrznego kontenera .ipk
+            with arpy.Archive(filename) as archive:
+                control_data = None
+                # Szukamy pliku `control.tar.gz` wewnątrz archiwum `ar`
+                for header in archive.headers:
+                    if header.name.decode().startswith('control.tar.gz'):
+                        control_data = archive.read(header)
                         break
 
-                if not control_member:
-                    raise ValueError("Brak pliku control.tar(.gz) w paczce")
+                if not control_data:
+                    raise ValueError("Brak pliku control.tar.gz w paczce .ipk")
 
-                with tempfile.TemporaryDirectory() as tmpdir:
-                    tar.extract(control_member, path=tmpdir)
-                    control_path = os.path.join(tmpdir, control_member.name)
+                # KROK 2: Tworzymy obiekt plikopodobny w pamięci z danych `control.tar.gz`
+                # To pozwala `tarfile` pracować bez zapisywania plików na dysku.
+                control_fileobj = io.BytesIO(control_data)
 
-                    # Jeżeli to gzip — rozpakuj do pliku tymczasowego
-                    if control_path.endswith(".gz"):
-                        inner_tmp_dir = os.path.join(tmpdir, "control_inner")
-                        os.makedirs(inner_tmp_dir, exist_ok=True)
-                        uncompressed_path = os.path.join(inner_tmp_dir, "control.tar")
-                        with gzip.open(control_path, "rb") as gz:
-                            with open(uncompressed_path, "wb") as f:
-                                f.write(gz.read())
-                        control_path = uncompressed_path
+                # KROK 3: Używamy `tarfile` do przetworzenia archiwum `control.tar.gz` z pamięci.
+                # 'r:gz' mówi tarfile, że dane są skompresowane za pomocą gzip.
+                with tarfile.open(fileobj=control_fileobj, mode="r:gz") as control_tar:
+                    control_file_member = None
+                    for member in control_tar.getmembers():
+                        # Plik 'control' może być w podkatalogu, np. './control'
+                        if member.name.endswith("control"):
+                            control_file_member = member
+                            break
+                    
+                    if not control_file_member:
+                        raise ValueError("Brak pliku 'control' w archiwum control.tar.gz")
 
-                    # Teraz rozpakuj control.tar i znajdź plik "control"
-                    if tarfile.is_tarfile(control_path):
-                        with tarfile.open(control_path, "r") as control_tar:
-                            control_file_member = None
-                            for member in control_tar.getmembers():
-                                # Plik może być w podkatalogu ./control
-                                if member.name.endswith("control"):
-                                    control_file_member = member
-                                    break
-                            if not control_file_member:
-                                raise ValueError("Brak pliku 'control' w archiwum control.tar")
-
-                            extracted_file = control_tar.extractfile(control_file_member)
-                            if extracted_file:
-                                control_content = extracted_file.read().decode("utf-8", errors="ignore")
-                                self._parse_control_content(control_content)
-                            else:
-                                raise ValueError("Nie można wyodrębnić pliku 'control'")
+                    extracted_file = control_tar.extractfile(control_file_member)
+                    if extracted_file:
+                        control_content = extracted_file.read().decode("utf-8", errors="ignore")
+                        self._parse_control_content(control_content)
                     else:
-                        raise ValueError("Wewnętrzny plik control.tar(.gz) nie jest prawidłowym archiwum tar")
+                        raise ValueError("Nie można wyodrębnić pliku 'control'")
 
-        except tarfile.ReadError as e:
-            # Przechwytujemy błąd odczytu, który wystąpi, jeśli plik nie jest ani tar, ani ar (który tarfile czasem czyta)
-            raise ValueError(f"Plik nie jest prawidłowym archiwum (tar/ar): {e}")
-
+        except Exception as e:
+            # Przechwytujemy wszystkie możliwe błędy (z arpy i tarfile) i rzucamy je dalej
+            # z czytelnym komunikatem.
+            raise ValueError(f"Błąd podczas parsowania pliku .ipk: {e}")
 
     def _parse_control_content(self, content):
         for line in content.splitlines():
