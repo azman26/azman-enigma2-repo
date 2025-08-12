@@ -29,9 +29,9 @@ jobs:
         run: |
           for arch_dir in all armv7ahf-neon mips32el; do
             if [ -d "$arch_dir" ]; then
-              echo "📂 Zawartość katalogu $arch_dir:"
+              echo "Zawartość katalogu $arch_dir:"
               ls -l "$arch_dir"
-              echo "🔍 Szczegóły plików .ipk w $arch_dir:"
+              echo "Szczegóły plików .ipk w $arch_dir:"
               for ipk in "$arch_dir"/*.ipk; do
                 if [ -f "$ipk" ]; then
                   echo "------ $ipk ------"
@@ -43,7 +43,7 @@ jobs:
                 fi
               done
             else
-              echo "ℹ️ Katalog $arch_dir nie istnieje, pomijam."
+              echo "Katalog $arch_dir nie istnieje, pomijam."
             fi
           done
         shell: bash
