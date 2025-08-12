@@ -52,7 +52,6 @@ jobs:
           done
         shell: bash
 
-      # --- POCZĄTEK ZMODYFIKOWANEGO KROKU ---
       - name: Generate custom HTML index file (main)
         run: |
           echo '<!DOCTYPE html>' > index.html
@@ -76,7 +75,9 @@ jobs:
           echo '# Zainstaluj wybrany pakiet (np. AzmanPanel)' >> index.html
           echo 'opkg install enigma2-plugin-extensions-AzmanPanel' >> index.html
           echo '</code></pre>' >> index.html
-          echo '  <h2>Dostępne architektury w repozytorium</h2>' >> index.html
+          # --- POCZĄTEK ZMIANY NAGŁÓWKA ---
+          echo '  <h2>Dostępne architektury i pakiety w repozytorium</h2>' >> index.html
+          # --- KONIEC ZMIANY NAGŁÓWKA ---
           echo '  <ul>' >> index.html
           if [ -d "all" ]; then echo '    <li><a href="all/">all/</a> – pakiety niezależne od architektury (skórki, picony, wtyczki python)</li>' >> index.html; fi
           if [ -d "armv7ahf-neon" ]; then echo '    <li><a href="armv7ahf-neon/">armv7ahf-neon/</a> – pakiety dla procesorów ARM</li>' >> index.html; fi
@@ -86,8 +87,8 @@ jobs:
           echo '</body>' >> index.html
           echo '</html>' >> index.html
         shell: bash
-      # --- KONIEC ZMODYFIKOWANEGO KROKU ---
 
+      # --- POCZĄTEK ZMODYFIKOWANEGO KROKU ---
       - name: Generate HTML index in all directory
         run: |
           if [ -d "all" ] && [ -f "all/Packages" ]; then
@@ -97,19 +98,23 @@ jobs:
             echo '<h1>Pakiety w katalogu all</h1>' >> all/index.html
             echo '<ul>' >> all/index.html
 
-            awk -v repo_url="https://raw.githubusercontent.com/azman26/azman-enigma2-repo/gh-pages/all" '
-            BEGIN { pkg=""; ver=""; }
+            # POPRAWIONY SKRYPT AWK
+            # - Zmieniono repo_url na prawidłowy adres GitHub Pages.
+            # - Skrypt teraz odczytuje pole "Filename:" aby uzyskać poprawną nazwę pliku.
+            awk -v repo_url="https://azman26.github.io/azman-enigma2-repo/all" '
+            BEGIN { pkg=""; ver=""; fname=""; }
             /^Package:/ { pkg=$2; }
             /^Version:/ { ver=$2; }
+            /^Filename:/ { fname=$2; }
             /^$/ {
-              if (pkg != "") {
-                printf "<li><a href=\"" repo_url "/%s.ipk\"><b>%s</b></a> — wersja %s</li>\n", pkg, pkg, ver;
+              if (pkg != "" && fname != "") {
+                printf "<li><a href=\"" repo_url "/" fname "\"><b>%s</b></a> — wersja %s</li>\n", pkg, ver;
               }
-              pkg=""; ver="";
+              pkg=""; ver=""; fname="";
             }
             END {
-              if (pkg != "") {
-                printf "<li><a href=\"" repo_url "/%s.ipk\"><b>%s</b></a> — wersja %s</li>\n", pkg, pkg, ver;
+              if (pkg != "" && fname != "") {
+                printf "<li><a href=\"" repo_url "/" fname "\"><b>%s</b></a> — wersja %s</li>\n", pkg, ver;
               }
             }
             ' all/Packages >> all/index.html
@@ -119,6 +124,7 @@ jobs:
             echo "Katalog all lub plik Packages nie istnieje, pomijam generowanie index.html w all"
           fi
         shell: bash
+      # --- KONIEC ZMODYFIKOWANEGO KROKU ---
       
       - name: Add .nojekyll file to prevent GitHub Pages Jekyll processing
         run: touch .nojekyll
