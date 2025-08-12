@@ -453,8 +453,23 @@ class Package:
         if self.architecture: out += "Architecture: %s\n" % (self.architecture)
         if self.maintainer: out += "Maintainer: %s\n" % (self.maintainer)
         if hasattr(self, 'md5') and self.md5: out += "MD5Sum: %s\n" % (self.md5)
-        if hasattr(self, 'size') and self.size: out += "Size: %d\n" % int(self.size)
-        if self.installed_size: out += "InstalledSize: %d\n" % int(self.installed_size)
+
+        # Poprawione bezpieczne parsowanie Size:
+        try:
+            size_val = int(self.size)
+            if size_val > 0:
+                out += f"Size: {size_val}\n"
+        except (ValueError, TypeError):
+            pass
+
+        # Poprawione bezpieczne parsowanie InstalledSize:
+        try:
+            installed_size_val = int(self.installed_size)
+            if installed_size_val > 0:
+                out += f"Installed-Size: {installed_size_val}\n"
+        except (ValueError, TypeError):
+            pass
+
         if self.filename: out += "Filename: %s\n" % (self.filename)
         if self.source: out += "Source: %s\n" % (self.source)
         if self.description:
