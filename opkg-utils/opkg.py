@@ -55,7 +55,6 @@ class Version:
         if not selfversion: selfversion = ""
         if not refversion: refversion = ""
         while True:
-            # first look for non-numeric version component
             selfm = re.match('([^0-9]*)(.*)', selfversion)
             (selfalpha, selfversion) = selfm.groups()
             refm = re.match('([^0-9]*)(.*)', refversion)
@@ -64,7 +63,6 @@ class Version:
                 return 1
             elif (selfalpha < refalpha):
                 return -1
-            # now look for numeric version component
             (selfnum, selfversion) = re.match('([0-9]*)(.*)', selfversion).groups()
             (refnum, refversion) = re.match('([0-9]*)(.*)', refversion).groups()
             if (selfnum != ''):
@@ -100,7 +98,6 @@ class Version:
 
 def parse_version(versionstr):
     epoch = 0
-    # check for epoch
     m = re.match('([0-9]*):(.*)', versionstr)
     if m:
         (epochstr, versionstr) = m.groups()
@@ -112,7 +109,8 @@ class Package:
        packages."""
     def __init__(self, fn=None):
         self.package = None
-        self.version = 'none'
+        self.name = None
+        self.version = None
         self.parsed_version = None
         self.architecture = None
         self.maintainer = None
@@ -221,15 +219,50 @@ class Package:
                         control.seek(pos)
                         break
                     value += '\n' + next_line.lstrip(' ').rstrip('\r\n')
-                if name == 'size':
+                if name == 'package':
+                    self.package = value
+                    self.name = value
+                elif name == 'size':
                     try:
                         self.size = int(value)
                     except ValueError:
                         self.size = 0
                 elif name == 'md5sum':
                     self.md5 = value
-                elif name in self.__dict__:
-                    self.__dict__[name] = value
+                elif name == 'version':
+                    self.version = value
+                elif name == 'architecture':
+                    self.architecture = value
+                elif name == 'maintainer':
+                    self.maintainer = value
+                elif name == 'source':
+                    self.source = value
+                elif name == 'description':
+                    self.description = value
+                elif name == 'depends':
+                    self.depends = value
+                elif name == 'provides':
+                    self.provides = value
+                elif name == 'replaces':
+                    self.replaces = value
+                elif name == 'conflicts':
+                    self.conflicts = value
+                elif name == 'recommends':
+                    self.recommends = value
+                elif name == 'suggests':
+                    self.suggests = value
+                elif name == 'section':
+                    self.section = value
+                elif name == 'homepage':
+                    self.homepage = value
+                elif name == 'oe':
+                    self.oe = value
+                elif name == 'priority':
+                    self.priority = value
+                elif name == 'tags':
+                    self.tags = value
+                elif name == 'license':
+                    self.license = value
                 else:
                     print(f"Lost field: {name} = {value}")
             else:
@@ -248,6 +281,7 @@ class Package:
 
     def set_package(self, package):
         self.package = package
+        self.name = package
 
     def get_package(self):
         return self.package
@@ -418,8 +452,8 @@ class Package:
         if self.section: out += "Section: %s\n" % (self.section)
         if self.architecture: out += "Architecture: %s\n" % (self.architecture)
         if self.maintainer: out += "Maintainer: %s\n" % (self.maintainer)
-        if self.md5: out += "MD5Sum: %s\n" % (self.md5)
-        if self.size: out += "Size: %d\n" % int(self.size)
+        if hasattr(self, 'md5') and self.md5: out += "MD5Sum: %s\n" % (self.md5)
+        if hasattr(self, 'size') and self.size: out += "Size: %d\n" % int(self.size)
         if self.installed_size: out += "InstalledSize: %d\n" % int(self.installed_size)
         if self.filename: out += "Filename: %s\n" % (self.filename)
         if self.source: out += "Source: %s\n" % (self.source)
@@ -462,44 +496,30 @@ class Packages:
             pkg = Package()
             try:
                 pkg.read_control(f)
-            except TypeError as e:
-                sys.stderr.write("Cannot read control file '%s' - %s\n" % (fn, e))
-                continue
-            if pkg.get_package():
-                self.add_package(pkg)
-            else:
+            except Exception:
                 break
-        f.close()    
-        return
-
-    def write_packages_file(self, fn):
-        f = open(fn, "w")
-        names = list(self.packages.keys())
-        names.sort()
-        for name in names:
-            f.write(str(self.packages[name]))
+            self.add_package(pkg)
+            if not pkg.package:
+                break
         f.close()
 
-    def keys(self):
-        return list(self.packages.keys())
+    def get_package(self, package, architecture):
+        name = ("%s:%s" % (package, architecture))
+        if name in self.packages:
+            return self.packages[name]
+        else:
+            return None
 
-    def __getitem__(self, key):
-        return self.packages[key]
+    def __getitem__(self, name):
+        return self.packages[name]
+
+    def __iter__(self):
+        return iter(self.packages)
 
 if __name__ == "__main__":
-
-    assert Version(0, "1.2.2-r1").compare(Version(0, "1.2.3-r0")) == -1
-    assert Version(0, "1.2.2-r0").compare(Version(0, "1.2.2+cvs20070308-r0")) == -1
-    assert Version(0, "1.2.2+cvs20070308").compare(Version(0, "1.2.2-r0")) == 1
-    assert Version(0, "1.2.2-r0").compare(Version(0, "1.2.2-r0")) == 0
-    assert Version(0, "1.2.2-r5").compare(Version(0, "1.2.2-r0")) == 1
-
-    package = Package()
-
-    package.set_package("FooBar")
-    package.set_version("0.1-fam1")
-    package.set_architecture("arm")
-    package.set_maintainer("Testing <testing@testing.testing>")
-    package.set_depends("python >= 1.0")
-    package.set_description("A long\nlonger\nreally longer description\n")
-    print(package)
+    import sys
+    if len(sys.argv) < 2:
+        print("Usage: %s <packagefile.ipk>" % sys.argv[0])
+        sys.exit(1)
+    pkg = Package(sys.argv[1])
+    print(pkg)
