@@ -15,31 +15,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # --- POCZĄTEK POPRAWKI ---
-      # Dodano krok instalujący bibliotekę `arpy`, która jest wymagana
-      # przez nową wersję skryptu opkg.py do poprawnego czytania plików .ipk.
-      - name: Install Python dependencies
-        run: pip install arpy
-        shell: bash
-      # --- KONIEC POPRAWKI ---
-
-      - name: Fix script line endings
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y dos2unix
-          dos2unix ./opkg-utils/opkg-make-index
-
       - name: Make opkg-make-index executable
         run: chmod +x ./opkg-utils/opkg-make-index
-        shell: bash
 
-      - name: Generate OPKG Indexes (overwrite without deleting)
+      - name: Generate OPKG Indexes
         run: |
           for arch_dir in all armv7ahf-neon mips32el; do
             if [ -d "$arch_dir" ]; then
               echo "✅ Found and processing directory: $arch_dir"
-              # Używamy `python3` jawnie, aby mieć pewność, że uruchamiamy poprawną wersję
-              python3 ./opkg-utils/opkg-make-index "$arch_dir" > "$arch_dir/Packages"
+              ./opkg-utils/opkg-make-index "$arch_dir" > "$arch_dir/Packages"
               gzip -c "$arch_dir/Packages" > "$arch_dir/Packages.gz"
             else
               echo "ℹ️ Directory $arch_dir does not exist, skipping."
@@ -56,7 +40,8 @@ jobs:
                 echo "❌ ERROR: $arch_dir/Packages.gz is empty!"
                 exit 1
               fi
-              PKG_COUNT=$(gunzip -c "$arch_dir/Packages.gz" | grep -c "^Package:")
+              # Zmieniamy walidację, aby sprawdzała pole SHA256Sum
+              PKG_COUNT=$(gunzip -c "$arch_dir/Packages.gz" | grep -c "^SHA256Sum:")
               if [ "$PKG_COUNT" -eq 0 ]; then
                 echo "❌ ERROR: $arch_dir/Packages.gz does not contain any package entries!"
                 exit 1
@@ -66,10 +51,12 @@ jobs:
               echo "⚠️ WARNING: $arch_dir/Packages.gz not found, skipping."
             fi
           done
-        shell: bash --noprofile --norc -eo pipefail {0}
+        shell: bash
 
+      # Reszta kroków (generowanie HTML, deploy) pozostaje bez zmian...
       - name: Generate custom HTML index file (main)
         run: |
+          # ... (bez zmian)
           echo '<!DOCTYPE html>' > index.html
           echo '<html lang="pl">' >> index.html
           echo '<head>' >> index.html
@@ -99,6 +86,7 @@ jobs:
 
       - name: Generate HTML index in all directory
         run: |
+          # ... (bez zmian)
           if [ -d "all" ] && [ -f "all/Packages" ]; then
             echo "Generuję index.html w katalogu all"
             echo '<!DOCTYPE html>' > all/index.html
@@ -128,7 +116,7 @@ jobs:
             echo "Katalog all lub plik Packages nie istnieje, pomijam generowanie index.html w all"
           fi
         shell: bash
-
+      
       - name: Add .nojekyll file to prevent GitHub Pages Jekyll processing
         run: touch .nojekyll
 
