@@ -64,13 +64,11 @@ jobs:
           echo '</head>' >> index.html
           echo '<body>' >> index.html
           echo '  <h1>📦 Repozytorium OPKG dla Enigma2</h1>' >> index.html
-          echo '  <h2>Dodawanie repozytorium:</h2>' >> index.html
-          echo '  <p>Połącz się z tunerem przez SSH i wykonaj poniższą komendę:</p>' >> index.html
+          echo '  <p>Połącz się z tunerem i wykonaj poniższą komendę w terminalu:</p>' >> index.html
           echo '  <pre><code>echo "src/gz azman-feed-all https://azman26.github.io/azman-enigma2-repo/all" > /etc/opkg/azman-feed.conf</code></pre>' >> index.html
           echo '  <p style="text-align: center; margin: 20px 0; font-weight: bold;">lub</p>' >> index.html
           echo '  <p>Pobierz plik <a href="azman-feed.conf" download><strong>azman-feed.conf</strong></a>, a następnie wrzuć go za pomocą klienta FTP do katalogu <code>/etc/opkg/</code> na swoim dekoderze.</p>' >> index.html
           echo '  <hr style="margin: 2em 0;">' >> index.html
-          echo '  <h2>Dalsze kroki (po dodaniu repozytorium)</h2>' >> index.html
           echo '  <p>Po dodaniu repozytorium jedną z powyższych metod, wykonaj w terminalu:</p>' >> index.html
           echo '  <pre><code># Zaktualizuj listę pakietów' >> index.html
           echo 'opkg update' >> index.html
