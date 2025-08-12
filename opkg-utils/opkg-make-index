@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 #
 # opkg-make-index: Generate an index file for an opkg repository
-# Based on OpenWrt's opkg-utils with fix for skipping broken packages
+# Modified to skip broken packages and not require Size/Installed-Size
 #
 
 import sys
@@ -30,18 +31,20 @@ def generate_index(dirpath):
             sys.stderr.write(f"⚠️  Błąd odczytu {filename}: {e}\n")
             continue
 
-        if not pkg.name or pkg.name.strip() == "":
+        # Wymagamy tylko pola Package, reszta może być pusta
+        if not pkg.package or pkg.package.strip() == "":
             sys.stderr.write(f"⚠️  Pomijam plik '{filename}' — brak pola Package.\n")
             continue
 
         pkg_list.append(pkg)
 
-    # Sort by package name (case-insensitive)
-    pkg_list.sort(key=lambda p: p.name.lower())
+    # Sortowanie po nazwie pakietu (case-insensitive)
+    pkg_list.sort(key=lambda p: p.package.lower())
 
-    # Print package descriptions
+    # Wypisanie zawartości indexu
     for pkg in pkg_list:
-        print(pkg, end='')
+        sys.stdout.write(pkg.make_index_entry())
+        sys.stdout.write("\n")  # pusty wiersz między pakietami
 
 def main():
     if len(sys.argv) != 2:
