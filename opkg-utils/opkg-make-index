@@ -6,7 +6,6 @@
 
 import sys
 import os
-import time
 import opkg
 
 def generate_index(dirpath):
@@ -31,14 +30,18 @@ def generate_index(dirpath):
             sys.stderr.write(f"⚠️  Błąd odczytu {filename}: {e}\n")
             continue
 
+        if not pkg.name or pkg.name.strip() == "":
+            sys.stderr.write(f"⚠️  Pomijam plik '{filename}' — brak pola Package.\n")
+            continue
+
         pkg_list.append(pkg)
 
-    # Sort by package name
+    # Sort by package name (case-insensitive)
     pkg_list.sort(key=lambda p: p.name.lower())
 
-    # Print packages
+    # Print package descriptions
     for pkg in pkg_list:
-        pkg.write(sys.stdout)
+        print(pkg, end='')
 
 def main():
     if len(sys.argv) != 2:
