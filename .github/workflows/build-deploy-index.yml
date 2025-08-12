@@ -15,6 +15,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # --- POCZĄTEK POPRAWKI ---
+      # Dodano krok instalujący bibliotekę `arpy`, która jest wymagana
+      # przez nową wersję skryptu opkg.py do poprawnego czytania plików .ipk.
+      - name: Install Python dependencies
+        run: pip install arpy
+        shell: bash
+      # --- KONIEC POPRAWKI ---
+
       - name: Fix script line endings
         run: |
           sudo apt-get update
@@ -30,7 +38,8 @@ jobs:
           for arch_dir in all armv7ahf-neon mips32el; do
             if [ -d "$arch_dir" ]; then
               echo "✅ Found and processing directory: $arch_dir"
-              ./opkg-utils/opkg-make-index "$arch_dir" > "$arch_dir/Packages"
+              # Używamy `python3` jawnie, aby mieć pewność, że uruchamiamy poprawną wersję
+              python3 ./opkg-utils/opkg-make-index "$arch_dir" > "$arch_dir/Packages"
               gzip -c "$arch_dir/Packages" > "$arch_dir/Packages.gz"
             else
               echo "ℹ️ Directory $arch_dir does not exist, skipping."
