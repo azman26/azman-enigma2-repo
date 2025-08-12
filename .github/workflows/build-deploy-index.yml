@@ -25,6 +25,29 @@ jobs:
         run: chmod +x ./opkg-utils/opkg-make-index
         shell: bash
 
+      - name: Debug: check .ipk files in directories
+        run: |
+          for arch_dir in all armv7ahf-neon mips32el; do
+            if [ -d "$arch_dir" ]; then
+              echo "📂 Zawartość katalogu $arch_dir:"
+              ls -l "$arch_dir"
+              echo "🔍 Szczegóły plików .ipk w $arch_dir:"
+              for ipk in "$arch_dir"/*.ipk; do
+                if [ -f "$ipk" ]; then
+                  echo "------ $ipk ------"
+                  file "$ipk"
+                  sha256sum "$ipk"
+                  head -c 32 "$ipk" | xxd
+                else
+                  echo "Brak plików .ipk w $arch_dir"
+                fi
+              done
+            else
+              echo "ℹ️ Katalog $arch_dir nie istnieje, pomijam."
+            fi
+          done
+        shell: bash
+
       - name: Generate OPKG Indexes (overwrite without deleting)
         run: |
           for arch_dir in all armv7ahf-neon mips32el; do
