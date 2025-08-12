@@ -65,7 +65,7 @@ jobs:
           echo '</head>' >> index.html
           echo '<body>' >> index.html
           echo '  <h1>📦 Repozytorium OPKG dla Enigma2</h1>' >> index.html
-          echo '  <p>Aby dodać repozytorium, połącz się z tunerem przez SSH i wykonaj komendę:</p>' >> index.html
+          echo '  <p>Aby dodać repozytorium, połącz się z tunerem i wykonaj komendę:</p>' >> index.html
           echo '  <pre><code>echo "src/gz azman-feed-all https://azman26.github.io/azman-enigma2-repo/all" > /etc/opkg/azman-feed.conf</code></pre>' >> index.html
           echo '  <h2>Dostępne architektury</h2>' >> index.html
           echo '  <ul>' >> index.html
