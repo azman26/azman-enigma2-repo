@@ -40,7 +40,6 @@ jobs:
                 echo "❌ ERROR: $arch_dir/Packages.gz is empty!"
                 exit 1
               fi
-              # Zmieniamy walidację, aby sprawdzała pole SHA256Sum
               PKG_COUNT=$(gunzip -c "$arch_dir/Packages.gz" | grep -c "^SHA256Sum:")
               if [ "$PKG_COUNT" -eq 0 ]; then
                 echo "❌ ERROR: $arch_dir/Packages.gz does not contain any package entries!"
@@ -53,40 +52,47 @@ jobs:
           done
         shell: bash
 
-      # Reszta kroków (generowanie HTML, deploy) pozostaje bez zmian...
+      # --- POCZĄTEK ZMODYFIKOWANEGO KROKU ---
       - name: Generate custom HTML index file (main)
         run: |
-          # ... (bez zmian)
           echo '<!DOCTYPE html>' > index.html
           echo '<html lang="pl">' >> index.html
           echo '<head>' >> index.html
           echo '  <meta charset="UTF-8" />' >> index.html
           echo '  <title>Repozytorium OPKG - Azman</title>' >> index.html
+          echo '  <style>body { font-family: sans-serif; line-height: 1.6; max-width: 800px; margin: 2em auto; padding: 0 1em; } pre { background-color: #f4f4f4; padding: 1em; border: 1px solid #ddd; border-radius: 5px; } code { font-family: monospace; } a { color: #007bff; text-decoration: none; } a:hover { text-decoration: underline; }</style>' >> index.html
           echo '</head>' >> index.html
           echo '<body>' >> index.html
           echo '  <h1>📦 Repozytorium OPKG dla Enigma2</h1>' >> index.html
-          echo '  <p>Aby dodać repozytorium, połącz się z tunerem i wykonaj komendę:</p>' >> index.html
+          echo '  <h2>Metoda 1: Automatyczna (przez SSH)</h2>' >> index.html
+          echo '  <p>Połącz się z tunerem przez i wykonaj poniższą komendę:</p>' >> index.html
           echo '  <pre><code>echo "src/gz azman-feed-all https://azman26.github.io/azman-enigma2-repo/all" > /etc/opkg/azman-feed.conf</code></pre>' >> index.html
-          echo '  <h2>Dostępne architektury</h2>' >> index.html
+          echo '  <p style="text-align: center; margin: 20px 0; font-weight: bold;">lub</p>' >> index.html
+          echo '  <h2>Metoda 2: Ręczna (przez FTP)</h2>' >> index.html
+          echo '  <p>Pobierz plik <a href="azman-feed.conf" download><strong>azman-feed.conf</strong></a>, a następnie wrzuć go za pomocą klienta FTP do katalogu <code>/etc/opkg/</code> na swoim dekoderze.</p>' >> index.html
+          echo '  <hr style="margin: 2em 0;">' >> index.html
+          echo '  <h2>Dalsze kroki (po dodaniu repozytorium)</h2>' >> index.html
+          echo '  <p>Po dodaniu repozytorium jedną z powyższych metod, wykonaj w terminalu:</p>' >> index.html
+          echo '  <pre><code># Zaktualizuj listę pakietów' >> index.html
+          echo 'opkg update' >> index.html
+          echo '' >> index.html
+          echo '# Zainstaluj wybrany pakiet (np. AzmanPanel)' >> index.html
+          echo 'opkg install enigma2-plugin-extensions-AzmanPanel' >> index.html
+          echo '</code></pre>' >> index.html
+          echo '  <h2>Dostępne architektury w repozytorium</h2>' >> index.html
           echo '  <ul>' >> index.html
           if [ -d "all" ]; then echo '    <li><a href="all/">all/</a> – pakiety niezależne od architektury (skórki, picony, wtyczki python)</li>' >> index.html; fi
           if [ -d "armv7ahf-neon" ]; then echo '    <li><a href="armv7ahf-neon/">armv7ahf-neon/</a> – pakiety dla procesorów ARM</li>' >> index.html; fi
           if [ -d "mips32el" ]; then echo '    <li><a href="mips32el/">mips32el/</a> – pakiety dla procesorów MIPS</li>' >> index.html; fi
           echo '  </ul>' >> index.html
-          echo '  <h2>Instalacja pakietów</h2>' >> index.html
-          echo '  <pre><code># Zaktualizuj listę pakietów' >> index.html
-          echo 'opkg update' >> index.html
-          echo '# Zainstaluj wybrany pakiet (np. AzmanPanel)' >> index.html
-          echo 'opkg install enigma2-plugin-extensions-AzmanPanel' >> index.html
-          echo '</code></pre>' >> index.html
-          echo '  <p>Repozytorium przygotowane przez <strong>azman</strong>.</p>' >> index.html
+          echo '  <p style="text-align: center; margin-top: 2em; color: #555;">Repozytorium przygotowane przez <strong>azman</strong>.</p>' >> index.html
           echo '</body>' >> index.html
           echo '</html>' >> index.html
         shell: bash
+      # --- KONIEC ZMODYFIKOWANEGO KROKU ---
 
       - name: Generate HTML index in all directory
         run: |
-          # ... (bez zmian)
           if [ -d "all" ] && [ -f "all/Packages" ]; then
             echo "Generuję index.html w katalogu all"
             echo '<!DOCTYPE html>' > all/index.html
